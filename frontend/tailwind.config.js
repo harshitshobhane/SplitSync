@@ -49,27 +49,27 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Premium custom colors
-        'rose-gold': {
-          DEFAULT: 'hsl(var(--rose-gold))',
-          light: 'hsl(var(--rose-gold-light))',
-          dark: 'hsl(var(--rose-gold-dark))',
+        // Classy custom colors
+        'charcoal': {
+          DEFAULT: 'hsl(var(--charcoal))',
+          light: 'hsl(var(--charcoal-light))',
+          dark: 'hsl(var(--charcoal-dark))',
         },
-        'lavender': {
-          DEFAULT: 'hsl(var(--lavender))',
-          dark: 'hsl(var(--lavender-dark))',
+        'platinum': {
+          DEFAULT: 'hsl(var(--platinum))',
+          dark: 'hsl(var(--platinum-dark))',
         },
-        'mint': {
-          DEFAULT: 'hsl(var(--mint))',
-          dark: 'hsl(var(--mint-dark))',
+        'gold': {
+          DEFAULT: 'hsl(var(--gold))',
+          dark: 'hsl(var(--gold-dark))',
         },
-        'warm-gray': {
-          DEFAULT: 'hsl(var(--warm-gray))',
-          dark: 'hsl(var(--warm-gray-dark))',
+        'slate': {
+          DEFAULT: 'hsl(var(--slate))',
+          dark: 'hsl(var(--slate-dark))',
         },
-        'soft-coral': {
-          DEFAULT: 'hsl(var(--soft-coral))',
-          light: 'hsl(var(--soft-coral-light))',
+        'burgundy': {
+          DEFAULT: 'hsl(var(--burgundy))',
+          light: 'hsl(var(--burgundy-light))',
         },
       },
       borderRadius: {

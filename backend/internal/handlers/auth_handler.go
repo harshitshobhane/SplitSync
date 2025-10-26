@@ -12,19 +12,21 @@ import (
 	"splitsync-backend/internal/models"
 )
 
+// AuthHandler handles authentication-related requests
 type AuthHandler struct {
 	db *mongo.Database
 }
 
+// NewAuthHandler creates a new AuthHandler instance
 func NewAuthHandler(db *mongo.Database) *AuthHandler {
 	return &AuthHandler{db: db}
 }
 
-// Login handles user login
+// Login handles user login requests
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
 
@@ -39,16 +41,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to authenticate user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
 		return
 	}
 
-	// TODO: Implement password verification
-	// For now, we'll just check if the user exists
-	// In a real implementation, you would use bcrypt to verify the password
+	// Note: Password verification should be implemented with bcrypt
+	// For now, this is a placeholder implementation
+	if user.Password != req.Password {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
 
-	// TODO: Generate JWT token
-	// For now, we'll return a mock token
+	// Note: JWT token generation should be implemented
+	// For now, returning a mock token
 	token := "mock_jwt_token_" + user.ID.Hex()
 
 	response := models.AuthResponse{
@@ -59,11 +64,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Register handles user registration
+// Register handles user registration requests
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
 
@@ -79,8 +84,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// TODO: Hash password using bcrypt
-	// For now, we'll store the plain password (NOT RECOMMENDED FOR PRODUCTION)
+	// Note: Password should be hashed using bcrypt
+	// For now, storing plain password (NOT RECOMMENDED FOR PRODUCTION)
 	hashedPassword := req.Password
 
 	user := models.User{
@@ -98,9 +103,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	user.ID = result.InsertedID.(primitive.ObjectID)
-	user.Password = "" // Don't return password
+	user.Password = "" // Don't return password in response
 
-	// TODO: Generate JWT token
+	// Note: JWT token generation should be implemented
 	token := "mock_jwt_token_" + user.ID.Hex()
 
 	response := models.AuthResponse{
@@ -111,9 +116,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-// Logout handles user logout
+// Logout handles user logout requests
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// TODO: Implement token blacklisting or session invalidation
-	// For now, we'll just return a success message
+	// Note: Token blacklisting or session invalidation should be implemented
+	// For now, returning a success message
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

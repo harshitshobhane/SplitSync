@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// SetupRoutes configures all application routes
 func SetupRoutes(
 	router *gin.Engine,
 	authHandler *handlers.AuthHandler,
@@ -23,98 +24,69 @@ func SetupRoutes(
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		// Public routes (no auth required)
-		auth := v1.Group("/auth")
-		{
-			auth.POST("/login", authHandler.Login)
-			auth.POST("/register", authHandler.Register)
-			auth.POST("/logout", authHandler.Logout)
-		}
-
-		// Protected routes (auth required)
-		protected := v1.Group("/")
-		protected.Use(middleware.Auth())
-		{
-			// Expense routes
-			expenses := protected.Group("/expenses")
-			{
-				expenses.GET("", expenseHandler.GetExpenses)
-				expenses.POST("", expenseHandler.CreateExpense)
-				expenses.PUT("/:id", expenseHandler.UpdateExpense)
-				expenses.DELETE("/:id", expenseHandler.DeleteExpense)
-			}
-
-			// Transfer routes
-			transfers := protected.Group("/transfers")
-			{
-				transfers.GET("", transferHandler.GetTransfers)
-				transfers.POST("", transferHandler.CreateTransfer)
-				transfers.PUT("/:id", transferHandler.UpdateTransfer)
-				transfers.DELETE("/:id", transferHandler.DeleteTransfer)
-			}
-
-			// Settings routes
-			settings := protected.Group("/settings")
-			{
-				settings.GET("", settingsHandler.GetSettings)
-				settings.PUT("", settingsHandler.UpdateSettings)
-			}
-
-			// Report routes
-			reports := protected.Group("/reports")
-			{
-				reports.GET("/monthly/:year/:month", reportHandler.GetMonthlyReport)
-				reports.GET("/categories/:year/:month", reportHandler.GetCategoryReport)
-			}
-		}
+		setupAuthRoutes(v1, authHandler)
+		setupProtectedRoutes(v1, expenseHandler, transferHandler, settingsHandler, reportHandler)
 	}
 
 	// Legacy API routes (for backward compatibility)
 	api := router.Group("/api")
 	{
-		// Public routes
-		auth := api.Group("/auth")
+		setupAuthRoutes(api, authHandler)
+		setupProtectedRoutes(api, expenseHandler, transferHandler, settingsHandler, reportHandler)
+	}
+}
+
+// setupAuthRoutes configures authentication routes
+func setupAuthRoutes(group *gin.RouterGroup, authHandler *handlers.AuthHandler) {
+	auth := group.Group("/auth")
+	{
+		auth.POST("/login", authHandler.Login)
+		auth.POST("/register", authHandler.Register)
+		auth.POST("/logout", authHandler.Logout)
+	}
+}
+
+// setupProtectedRoutes configures protected routes that require authentication
+func setupProtectedRoutes(
+	group *gin.RouterGroup,
+	expenseHandler *handlers.ExpenseHandler,
+	transferHandler *handlers.TransferHandler,
+	settingsHandler *handlers.SettingsHandler,
+	reportHandler *handlers.ReportHandler,
+) {
+	protected := group.Group("/")
+	protected.Use(middleware.Auth())
+	{
+		// Expense routes
+		expenses := protected.Group("/expenses")
 		{
-			auth.POST("/login", authHandler.Login)
-			auth.POST("/register", authHandler.Register)
-			auth.POST("/logout", authHandler.Logout)
+			expenses.GET("", expenseHandler.GetExpenses)
+			expenses.POST("", expenseHandler.CreateExpense)
+			expenses.PUT("/:id", expenseHandler.UpdateExpense)
+			expenses.DELETE("/:id", expenseHandler.DeleteExpense)
 		}
 
-		// Protected routes
-		protected := api.Group("/")
-		protected.Use(middleware.Auth())
+		// Transfer routes
+		transfers := protected.Group("/transfers")
 		{
-			// Expense routes
-			expenses := protected.Group("/expenses")
-			{
-				expenses.GET("", expenseHandler.GetExpenses)
-				expenses.POST("", expenseHandler.CreateExpense)
-				expenses.PUT("/:id", expenseHandler.UpdateExpense)
-				expenses.DELETE("/:id", expenseHandler.DeleteExpense)
-			}
+			transfers.GET("", transferHandler.GetTransfers)
+			transfers.POST("", transferHandler.CreateTransfer)
+			transfers.PUT("/:id", transferHandler.UpdateTransfer)
+			transfers.DELETE("/:id", transferHandler.DeleteTransfer)
+		}
 
-			// Transfer routes
-			transfers := protected.Group("/transfers")
-			{
-				transfers.GET("", transferHandler.GetTransfers)
-				transfers.POST("", transferHandler.CreateTransfer)
-				transfers.PUT("/:id", transferHandler.UpdateTransfer)
-				transfers.DELETE("/:id", transferHandler.DeleteTransfer)
-			}
+		// Settings routes
+		settings := protected.Group("/settings")
+		{
+			settings.GET("", settingsHandler.GetSettings)
+			settings.PUT("", settingsHandler.UpdateSettings)
+		}
 
-			// Settings routes
-			settings := protected.Group("/settings")
-			{
-				settings.GET("", settingsHandler.GetSettings)
-				settings.PUT("", settingsHandler.UpdateSettings)
-			}
-
-			// Report routes
-			reports := protected.Group("/reports")
-			{
-				reports.GET("/monthly/:year/:month", reportHandler.GetMonthlyReport)
-				reports.GET("/categories/:year/:month", reportHandler.GetCategoryReport)
-			}
+		// Report routes
+		reports := protected.Group("/reports")
+		{
+			reports.GET("/monthly/:year/:month", reportHandler.GetMonthlyReport)
+			reports.GET("/categories/:year/:month", reportHandler.GetCategoryReport)
 		}
 	}
 }

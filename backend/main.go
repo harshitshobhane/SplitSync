@@ -17,13 +17,16 @@ import (
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		log.Println("No .env file found, using system environment variables")
 	}
 
-	// Load configuration
+	// Load and validate configuration
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal("Configuration validation failed:", err)
+	}
 
-	// Initialize database
+	// Initialize database connection
 	db, err := database.Connect(cfg.MongoURI)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
@@ -37,7 +40,7 @@ func main() {
 
 	router := gin.Default()
 
-	// CORS configuration
+	// Configure CORS
 	corsConfig := cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "https://yourdomain.com"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -47,10 +50,11 @@ func main() {
 	}
 	router.Use(cors.New(corsConfig))
 
-	// Middleware
+	// Apply middleware
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
 	router.Use(middleware.RateLimit())
+	router.Use(middleware.SecurityHeaders())
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
@@ -63,12 +67,12 @@ func main() {
 	routes.SetupRoutes(router, authHandler, expenseHandler, transferHandler, settingsHandler, reportHandler)
 
 	// Start server
-	port := os.Getenv("PORT")
+	port := cfg.Port
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server starting on port %s", port)
+	log.Printf("Server starting on port %s in %s mode", port, cfg.Environment)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

@@ -22,7 +22,7 @@ export const useLocalStorage = (key, initialValue) => {
       const item = window.localStorage.getItem(key)
       return item ? JSON.parse(item) : initialValue
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error)
+      // Return initial value if localStorage is not available
       return initialValue
     }
   })
@@ -33,7 +33,7 @@ export const useLocalStorage = (key, initialValue) => {
       setStoredValue(valueToStore)
       window.localStorage.setItem(key, JSON.stringify(valueToStore))
     } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error)
+      // Silently fail if localStorage is not available
     }
   }
 

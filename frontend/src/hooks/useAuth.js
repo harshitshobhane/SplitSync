@@ -30,7 +30,7 @@ export function useAuth() {
     try {
       await apiService.logout()
     } catch (error) {
-      console.error('Logout error:', error)
+      // Logout error - continue with local cleanup
     } finally {
       localStorage.removeItem('auth_token')
       setUser(null)

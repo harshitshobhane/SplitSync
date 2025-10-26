@@ -53,14 +53,14 @@ const SearchModal = ({ isOpen, onClose, searchQuery, setSearchQuery, onFilter })
             initial={{ opacity: 0, y: -50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -50, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            className="bg-background rounded-2xl p-6 w-full max-w-md shadow-xl border"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Search & Filter</h2>
+              <h2 className="text-lg font-semibold">Search & Filter</h2>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+                className="p-2 hover:bg-accent rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
@@ -68,31 +68,29 @@ const SearchModal = ({ isOpen, onClose, searchQuery, setSearchQuery, onFilter })
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2">
                   Search
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
                   <input
                     ref={inputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search expenses..."
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input pl-10 w-full"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Category
-                  </label>
+                  <label className="block text-sm font-medium mb-2">Category</label>
                   <select
                     value={filters.category}
                     onChange={(e) => handleFilterChange('category', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input w-full"
                   >
                     <option value="">All Categories</option>
                     <option value="groceries">Groceries</option>
@@ -109,13 +107,11 @@ const SearchModal = ({ isOpen, onClose, searchQuery, setSearchQuery, onFilter })
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Sort By
-                  </label>
+                  <label className="block text-sm font-medium mb-2">Sort By</label>
                   <select
                     value={filters.sortBy}
                     onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input w-full"
                   >
                     <option value="date">Date (Newest)</option>
                     <option value="amount">Amount (High to Low)</option>
@@ -125,13 +121,11 @@ const SearchModal = ({ isOpen, onClose, searchQuery, setSearchQuery, onFilter })
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Date Range
-                </label>
+                <label className="block text-sm font-medium mb-2">Date Range</label>
                 <select
                   value={filters.dateRange}
                   onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input w-full"
                 >
                   <option value="">All Time</option>
                   <option value="today">Today</option>
@@ -142,17 +136,11 @@ const SearchModal = ({ isOpen, onClose, searchQuery, setSearchQuery, onFilter })
                 </select>
               </div>
 
-              <div className="flex space-x-3 pt-4">
-                <button
-                  onClick={applyFilters}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
-                >
+              <div className="flex gap-3 pt-4">
+                <button onClick={applyFilters} className="btn btn-primary flex-1 py-3">
                   Apply Filters
                 </button>
-                <button
-                  onClick={clearFilters}
-                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
+                <button onClick={clearFilters} className="btn btn-secondary px-4 py-3">
                   Clear
                 </button>
               </div>
