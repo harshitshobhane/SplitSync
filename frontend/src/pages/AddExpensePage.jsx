@@ -1,19 +1,196 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQueryClient } from 'react-query'
 import toast from 'react-hot-toast'
 import { 
   Loader2, Calculator, Percent, DollarSign, FileText, CreditCard, Tag, Users, Plus,
-  ShoppingCart, Home, UtensilsCrossed, Heart, Zap, Plane, Ticket, Gift, FileText as FileTextIcon, HeartPulse, Car, MoreHorizontal
+  ShoppingCart, Home, UtensilsCrossed, Heart, Zap, Plane, Ticket, Gift, FileText as FileTextIcon, HeartPulse, Car, MoreHorizontal, ChevronDown
 } from 'lucide-react'
 import { apiService } from '../lib/api'
 import { CATEGORIES } from '../utils/constants'
 import { calculateSplitAmounts } from '../utils/calculations'
 import { getCurrencySymbol } from '../utils/dateUtils'
 
+const CategorySelector = ({ selected, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedCategory = selected ? CATEGORIES[selected] : null
+  const SelectedIconComponent = selectedCategory ? iconMap[CATEGORIES[selected]?.icon] : null
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between input hover:border-foreground/50 transition-colors py-2.5 sm:py-3"
+      >
+        {selected && SelectedIconComponent ? (
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 sm:p-2 rounded bg-muted flex-shrink-0">
+              <SelectedIconComponent className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: selectedCategory.color }} />
+            </div>
+            <span className="font-medium text-xs sm:text-sm truncate">{selectedCategory.label}</span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-xs sm:text-sm">Select category</span>
+        )}
+        <ChevronDown className={`h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-xl max-h-64 overflow-hidden"
+          >
+            <div className="overflow-y-auto max-h-64 custom-scrollbar">
+              {Object.entries(CATEGORIES).map(([key, category]) => {
+                const IconComponent = iconMap[category.icon]
+                const isSelected = selected === key
+                if (!IconComponent) return null
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      onChange(key)
+                      setIsOpen(false)
+                    }}
+                    className={`w-full flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-2 sm:py-2.5 hover:bg-accent transition-colors text-left ${
+                      isSelected ? 'bg-accent' : ''
+                    }`}
+                  >
+                    <div className="p-1.5 sm:p-2 rounded bg-muted flex-shrink-0">
+                      <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: category.color }} />
+                    </div>
+                    <span className="flex-1 font-medium text-xs sm:text-sm">{category.label}</span>
+                    {isSelected && (
+                      <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: category.color }} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+const RatioSelector = ({ selected, onChange, names }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const ratioOptions = [
+    { value: 50, label: '50/50 - Equal' },
+    { value: 60, label: `60/40 - ${names.person1Name} pays more` },
+    { value: 70, label: `70/30 - ${names.person1Name} pays more` },
+    { value: 80, label: `80/20 - ${names.person1Name} pays most` },
+    { value: 40, label: `40/60 - ${names.person2Name} pays more` },
+    { value: 30, label: `30/70 - ${names.person2Name} pays more` },
+    { value: 20, label: `20/80 - ${names.person2Name} pays most` },
+    { value: 100, label: `100/0 - ${names.person1Name} pays all` },
+    { value: 0, label: `0/100 - ${names.person2Name} pays all` }
+  ]
+
+  const selectedOption = ratioOptions.find(opt => opt.value === selected)
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between input hover:border-foreground/50 transition-colors py-2.5 sm:py-3"
+      >
+        {selectedOption ? (
+          <span className="font-medium text-xs sm:text-sm truncate">{selectedOption.label}</span>
+        ) : (
+          <span className="text-muted-foreground text-xs sm:text-sm">Select ratio</span>
+        )}
+        <ChevronDown className={`h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-xl max-h-64 overflow-hidden"
+          >
+            <div className="overflow-y-auto max-h-64 custom-scrollbar">
+              {ratioOptions.map((option) => {
+                const isSelected = selected === option.value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value)
+                      setIsOpen(false)
+                    }}
+                    className={`w-full flex items-center justify-between px-2.5 sm:px-3 py-2 sm:py-2.5 hover:bg-accent transition-colors ${
+                      isSelected ? 'bg-accent' : ''
+                    }`}
+                  >
+                    <span className="font-medium text-xs sm:text-sm">{option.label}</span>
+                    {isSelected && (
+                      <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full flex-shrink-0 bg-primary" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 const iconMap = {
-  ShoppingCart, Home, UtensilsCrossed, Heart, Zap, Plane, Ticket, 
-  Gift, FileTextIcon, HeartPulse, Car, MoreHorizontal
+  ShoppingCart, 
+  Home, 
+  UtensilsCrossed, 
+  Heart, 
+  Zap, 
+  Plane, 
+  Ticket, 
+  Gift, 
+  FileText, 
+  HeartPulse, 
+  Car, 
+  MoreHorizontal
 }
 
 const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
@@ -123,30 +300,16 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
               />
             </div>
           </div>
-           <div>
-             <label htmlFor="category" className="text-sm font-medium mb-2 block">
-               Category
-             </label>
-             <div className="relative">
-               <select
-                 id="category"
-                 value={formData.category}
-                 onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                 className="input w-full pr-10 appearance-none"
-                 required
-               >
-                 <option value="">Choose category</option>
-                 {Object.entries(CATEGORIES).map(([key, { label }]) => (
-                   <option key={key} value={key}>{label}</option>
-                 ))}
-               </select>
-               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                 <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                 </svg>
-               </div>
-             </div>
-           </div>
+          <div>
+            <label htmlFor="category" className="text-sm font-medium mb-2 block">
+              Category
+            </label>
+            <CategorySelector 
+              selected={formData.category}
+              onChange={(category) => setFormData(prev => ({ ...prev, category }))}
+              currency={currency}
+            />
+          </div>
         </div>
 
         <div>
@@ -208,22 +371,11 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
               <label htmlFor="ratio" className="text-sm font-medium mb-2 block">
                 Split Ratio
               </label>
-              <select
-                id="ratio"
-                value={formData.person1Ratio}
-                onChange={(e) => setFormData(prev => ({ ...prev, person1Ratio: parseFloat(e.target.value) }))}
-                className="input w-full"
-              >
-                <option value="50">50/50 - Equal</option>
-                <option value="60">60/40 - {names.person1Name} pays more</option>
-                <option value="70">70/30 - {names.person1Name} pays more</option>
-                <option value="80">80/20 - {names.person1Name} pays most</option>
-                <option value="40">40/60 - {names.person2Name} pays more</option>
-                <option value="30">30/70 - {names.person2Name} pays more</option>
-                <option value="20">20/80 - {names.person2Name} pays most</option>
-                <option value="100">100/0 - {names.person1Name} pays all</option>
-                <option value="0">0/100 - {names.person2Name} pays all</option>
-              </select>
+              <RatioSelector 
+                selected={formData.person1Ratio}
+                onChange={(ratio) => setFormData(prev => ({ ...prev, person1Ratio: ratio }))}
+                names={names}
+              />
             </div>
             
             <div className="bg-muted p-3 rounded-xl">

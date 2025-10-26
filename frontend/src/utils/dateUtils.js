@@ -6,12 +6,44 @@ export const formatDate = (timestamp) => {
   const now = new Date()
   const diffTime = Math.abs(now - date)
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60))
+  const diffMinutes = Math.ceil(diffTime / (1000 * 60))
   
-  if (diffDays === 1) return 'Today'
-  if (diffDays === 2) return 'Yesterday'
+  // Get time in 12-hour format
+  const time = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  })
+  
+  if (diffDays === 1) return `Today at ${time}`
+  if (diffDays === 2) return `Yesterday at ${time}`
+  if (diffHours < 24) return `${diffHours} hours ago at ${time}`
+  if (diffMinutes < 60) return `${diffMinutes} min ago`
   if (diffDays <= 7) return `${diffDays - 1} days ago`
   
-  return date.toLocaleDateString()
+  return date.toLocaleDateString() + ' at ' + time
+}
+
+export const formatDateShort = (timestamp) => {
+  if (!timestamp) return 'Unknown date'
+  
+  const date = new Date(timestamp.seconds * 1000)
+  const now = new Date()
+  const diffTime = Math.abs(now - date)
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  const time = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  })
+  
+  if (diffDays === 1) return `Today, ${time}`
+  if (diffDays === 2) return `Yesterday, ${time}`
+  if (diffDays <= 7) return `${diffDays - 1} days ago, ${time}`
+  
+  return date.toLocaleDateString() + ', ' + time
 }
 
 export const formatCurrency = (amount, currency = 'USD') => {

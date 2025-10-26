@@ -8,6 +8,7 @@ import { calculateMonthlyTotals, calculateCategoryTotals } from '../utils/calcul
 import { download, share } from '../utils/storage'
 import ActivityItem from '../components/ActivityItem'
 import { formatCurrency } from '../utils/dateUtils'
+import { jsPDF } from 'jspdf'
 
 const ReportPage = ({ expenses, names, currency, setPage }) => {
   const now = new Date()
@@ -17,11 +18,223 @@ const ReportPage = ({ expenses, names, currency, setPage }) => {
 
   const exportData = async () => {
     try {
-      const data = await apiService.exportData('json')
-      const filename = `splitsync-report-${now.toISOString().split('T')[0]}.json`
-      download.json(data, filename)
-      toast.success('Report exported!')
+      const reportDate = now.toISOString().split('T')[0]
+      const monthYear = now.toLocaleString('default', { month: 'long', year: 'numeric' })
+      const currentTime = new Date().toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+      
+      // PDF Export with Ultra Premium Design
+      const doc = new jsPDF()
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      const margin = 15
+      let yPos = margin
+      
+      // Premium Gradient Header
+      for (let i = 0; i < 80; i++) {
+        const shade = Math.floor(30 + (80 * (i / 80)))
+        doc.setFillColor(15, 23, 42, shade / 100) // Dark slate gradient
+        doc.rect(0, i, pageWidth, 1, 'F')
+      }
+      
+      // Premium Logo Area
+      doc.setFillColor(59, 130, 246) // Blue accent
+      doc.circle(35, 25, 18, 'F')
+      
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(22)
+      doc.setFont('helvetica', 'bold')
+      doc.text('SS', 30, 28, { align: 'center' })
+      
+      // App Name
+      doc.setFontSize(32)
+      doc.setFont('helvetica', 'normal')
+      doc.text('SplitSync', 60, 25)
+      
+      doc.setFontSize(11)
+      doc.text('Expense Intelligence Report', 60, 33)
+      
+      // Premium Date Time Display
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      const dateTimeText = `${monthYear.toUpperCase()} • ${currentTime}`
+      doc.text(dateTimeText, pageWidth - margin, 20, { align: 'right' })
+      
+      yPos = 95
+      
+      // Premium Summary Section with Card
+      doc.setFillColor(249, 250, 251)
+      doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 45, 3, 'F')
+      
+      // Border
+      doc.setDrawColor(226, 232, 240)
+      doc.setLineWidth(0.5)
+      doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 45, 3, 'D')
+      
+      yPos += 12
+      
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(15, 23, 42)
+      doc.text('MONTHLY SUMMARY', margin + 5, yPos)
+      
+      yPos += 12
+      const summaryX = margin + 8
+      
+      // Person 1 with icon
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(15, 23, 42)
+      doc.text(`${names.person1Name}`, summaryX, yPos)
+      
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(34, 197, 94)
+      doc.text(formatCurrency(person1Paid, currency), summaryX + 65, yPos)
+      yPos += 7
+      
+      // Person 2 with icon
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(15, 23, 42)
+      doc.text(`${names.person2Name}`, summaryX, yPos)
+      
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(34, 197, 94)
+      doc.text(formatCurrency(person2Paid, currency), summaryX + 65, yPos)
+      yPos += 7
+      
+      // Total - Premium Highlight
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(15, 23, 42)
+      doc.text('Total Spent', summaryX, yPos)
+      doc.setTextColor(59, 130, 246)
+      doc.text(formatCurrency(totalSpent, currency), summaryX + 55, yPos)
+      
+      yPos += 25
+      
+      // Premium Category Breakdown
+      if (sortedCategories.length > 0) {
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(15, 23, 42)
+        doc.text('CATEGORY BREAKDOWN', margin, yPos)
+        yPos += 8
+        
+        // Premium Table Header
+        doc.setFillColor(30, 58, 138)
+        doc.roundedRect(margin, yPos - 5, pageWidth - (2 * margin), 8, 2, 'F')
+        
+        doc.setTextColor(255, 255, 255)
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'bold')
+        doc.text('CATEGORY', margin + 5, yPos)
+        doc.text('AMOUNT', pageWidth - margin - 25, yPos, { align: 'right' })
+        doc.text('%', pageWidth - margin - 5, yPos, { align: 'right' })
+        
+        doc.setTextColor(15, 23, 42)
+        yPos += 5
+        
+        // Premium Data Rows
+        sortedCategories.slice(0, 11).forEach(([key, amount], index) => {
+          const category = CATEGORIES[key]?.label || key
+          const percentage = ((amount / totalSpent) * 100).toFixed(1)
+          
+          if (yPos > pageHeight - 30) {
+            doc.addPage()
+            yPos = margin + 10
+          }
+          
+          // Alternating premium row background
+          if (index % 2 === 0) {
+            doc.setFillColor(248, 250, 252)
+            doc.rect(margin, yPos - 5, pageWidth - (2 * margin), 9, 'F')
+          }
+          
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(15, 23, 42)
+          doc.text(category, margin + 5, yPos)
+          
+          doc.setFont('helvetica', 'normal')
+          doc.setTextColor(34, 197, 94)
+          doc.text(formatCurrency(amount, currency), pageWidth - margin - 25, yPos, { align: 'right' })
+          
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(100, 116, 139)
+          doc.text(`${percentage}%`, pageWidth - margin - 5, yPos, { align: 'right' })
+          
+          yPos += 9
+        })
+      }
+      
+      // Premium Recent Expenses
+      if (monthlyExpenses.length > 0 && yPos < pageHeight - 60) {
+        yPos += 15
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(15, 23, 42)
+        doc.text('RECENT EXPENSES', margin, yPos)
+        yPos += 8
+        
+        monthlyExpenses.slice(0, 6).forEach((expense) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage()
+            yPos = margin + 10
+          }
+          
+          // Expense card with border
+          doc.setFillColor(255, 255, 255)
+          doc.roundedRect(margin, yPos - 5, pageWidth - (2 * margin), 10, 2, 'F')
+          doc.setDrawColor(226, 232, 240)
+          doc.setLineWidth(0.3)
+          doc.roundedRect(margin, yPos - 5, pageWidth - (2 * margin), 10, 2, 'D')
+          
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(15, 23, 42)
+          doc.text(expense.description || 'No description', margin + 3, yPos)
+          
+          doc.setFont('helvetica', 'normal')
+          doc.setTextColor(100, 116, 139)
+          const paidBy = expense.paidBy === 'person1' ? names.person1Name : names.person2Name
+          doc.text(paidBy, margin + 3, yPos + 4)
+          
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(59, 130, 246)
+          doc.text(formatCurrency(expense.totalAmount || 0, currency), pageWidth - margin - 3, yPos, { align: 'right' })
+          
+          yPos += 12
+        })
+      }
+      
+      // Premium Footer on all pages
+      const totalPages = doc.internal.pages.length - 1
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i)
+        
+        // Line separator
+        doc.setDrawColor(226, 232, 240)
+        doc.setLineWidth(0.5)
+        doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15)
+        
+        doc.setFontSize(7)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(148, 163, 184)
+        const footerText = `Generated by SplitSync • ${currentTime}`
+        doc.text(footerText, pageWidth / 2, pageHeight - 8, { align: 'center' })
+      }
+      
+      // Save PDF
+      doc.save(`splitsync-report-${reportDate}.pdf`)
+      toast.success('Premium PDF exported!')
     } catch (error) {
+      console.error('Export error:', error)
       toast.error('Failed to export report')
     }
   }
@@ -55,7 +268,7 @@ ${names.person2Name} Paid: ${formatCurrency(person2Paid, currency)}`
         <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3">
           <button onClick={exportData} className="btn btn-secondary px-4 py-2 text-sm flex items-center justify-center">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Export PDF
           </button>
           <button onClick={shareReport} className="btn btn-secondary px-4 py-2 text-sm flex items-center justify-center">
             <Share2 className="h-4 w-4 mr-2" />
@@ -137,9 +350,9 @@ ${names.person2Name} Paid: ${formatCurrency(person2Paid, currency)}`
       )}
 
       {/* View All Transactions Button */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
         <button 
@@ -154,8 +367,8 @@ ${names.person2Name} Paid: ${formatCurrency(person2Paid, currency)}`
               <div className="text-left min-w-0 flex-1">
                 <h3 className="text-xs sm:text-sm font-semibold truncate">View All Transactions</h3>
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">See detailed expense and transfer history</p>
-              </div>
-            </div>
+        </div>
+      </div>
             <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
           </div>
         </button>
