@@ -14,11 +14,29 @@ export const formatDate = (timestamp) => {
   return date.toLocaleDateString()
 }
 
-export const formatCurrency = (amount) => {
+export const formatCurrency = (amount, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: currency,
   }).format(amount)
+}
+
+export const getCurrencySymbol = (currency = 'USD') => {
+  const symbols = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    INR: '₹',
+    JPY: '¥',
+    CNY: '¥',
+    CAD: 'C$',
+    AUD: 'A$',
+    CHF: 'CHF',
+    SEK: 'kr',
+    NOK: 'kr',
+    DKK: 'kr',
+  }
+  return symbols[currency] || '$'
 }
 
 export const formatPercentage = (value, total) => {

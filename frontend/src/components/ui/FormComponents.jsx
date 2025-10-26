@@ -152,7 +152,7 @@ export const LoadingSpinner = ({ size = 'default', className = '' }) => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className={`flex flex-col justify-center items-center space-y-4 ${className}`}
+      className={`flex flex-col justify-center items-center space-y-4 h-full ${className}`}
     >
       <div className="relative">
         <div className={`${sizeClasses[size]} text-rose-500 animate-spin`}>

@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	"splitsync-backend/internal/models"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"splitsync-backend/internal/models"
 )
 
 type ExpenseHandler struct {
@@ -32,7 +33,33 @@ func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cursor, err := collection.Find(ctx, bson.M{"user_id": userID})
+	// Convert userID to ObjectID for querying
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		// If conversion fails, try querying with string
+		cursor, err := collection.Find(ctx, bson.M{"user_id": userID})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
+			return
+		}
+		defer cursor.Close(ctx)
+
+		var expenses []models.Expense
+		if err = cursor.All(ctx, &expenses); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode expenses"})
+			return
+		}
+		c.JSON(http.StatusOK, expenses)
+		return
+	}
+
+	// Query with ObjectID or string (to handle both cases)
+	cursor, err := collection.Find(ctx, bson.M{
+		"$or": []bson.M{
+			{"user_id": userObjectID},
+			{"user_id": userID},
+		},
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return
@@ -123,7 +150,7 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 
 	update := bson.M{
 		"$set": bson.M{
-			"description":    req.Description,
+			"description":   req.Description,
 			"total_amount":  req.TotalAmount,
 			"category":      req.Category,
 			"paid_by":       req.PaidBy,

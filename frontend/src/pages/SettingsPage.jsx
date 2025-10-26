@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useMutation, useQueryClient } from 'react-query'
 import toast from 'react-hot-toast'
@@ -11,9 +11,10 @@ import { useTheme } from '../hooks/useTheme'
 
 const SettingsPage = ({ currentSettings, setPage }) => {
   const { theme, setTheme } = useTheme()
+  
   const [formData, setFormData] = useState({
-    person1Name: currentSettings.person1Name || 'Person 1',
-    person2Name: currentSettings.person2Name || 'Person 2',
+    person1Name: currentSettings.person1_name || currentSettings.person1Name || 'Person 1',
+    person2Name: currentSettings.person2_name || currentSettings.person2Name || 'Person 2',
     theme: theme || 'system',
     currency: currentSettings.currency || 'USD',
     notifications: currentSettings.notifications !== false
@@ -21,8 +22,25 @@ const SettingsPage = ({ currentSettings, setPage }) => {
   
   const queryClient = useQueryClient()
 
+  // Update form data when currentSettings changes
+  useEffect(() => {
+    setFormData({
+      person1Name: currentSettings.person1_name || currentSettings.person1Name || 'Person 1',
+      person2Name: currentSettings.person2_name || currentSettings.person2Name || 'Person 2',
+      theme: theme || 'system',
+      currency: currentSettings.currency || 'USD',
+      notifications: currentSettings.notifications !== false
+    })
+  }, [currentSettings, theme])
+
   const updateSettingsMutation = useMutation(apiService.updateSettings, {
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update cache with the returned data to ensure UI updates immediately
+      queryClient.setQueryData('settings', {
+        ...data,
+        person1Name: data.person1_name || data.person1Name,
+        person2Name: data.person2_name || data.person2Name,
+      })
       queryClient.invalidateQueries(['settings'])
       toast.success('Settings saved!')
       setPage('dashboard')
@@ -33,7 +51,15 @@ const SettingsPage = ({ currentSettings, setPage }) => {
   })
 
   const handleSave = () => {
-    updateSettingsMutation.mutate(formData)
+    // Map frontend property names to backend expected names
+    const settingsData = {
+      person1_name: formData.person1Name,
+      person2_name: formData.person2Name,
+      theme: formData.theme,
+      currency: formData.currency,
+      notifications: formData.notifications
+    }
+    updateSettingsMutation.mutate(settingsData)
   }
 
   const handleThemeChange = (newTheme) => {
@@ -55,11 +81,19 @@ const SettingsPage = ({ currentSettings, setPage }) => {
     { value: 'USD', label: 'USD ($)', symbol: '$' },
     { value: 'EUR', label: 'EUR (€)', symbol: '€' },
     { value: 'GBP', label: 'GBP (£)', symbol: '£' },
+    { value: 'INR', label: 'INR (₹)', symbol: '₹' },
     { value: 'JPY', label: 'JPY (¥)', symbol: '¥' },
+    { value: 'CNY', label: 'CNY (¥)', symbol: '¥' },
+    { value: 'CAD', label: 'CAD (C$)', symbol: 'C$' },
+    { value: 'AUD', label: 'AUD (A$)', symbol: 'A$' },
+    { value: 'CHF', label: 'CHF', symbol: 'CHF' },
+    { value: 'SEK', label: 'SEK', symbol: 'kr' },
+    { value: 'NOK', label: 'NOK', symbol: 'kr' },
+    { value: 'DKK', label: 'DKK', symbol: 'kr' },
   ]
 
   return (
-    <div className="h-full overflow-y-auto pb-20">
+    <div className="h-full overflow-y-auto pb-20 px-3 sm:px-4">
       <div className="space-y-4">
         {/* User Names */}
         <motion.div 
@@ -212,7 +246,7 @@ const SettingsPage = ({ currentSettings, setPage }) => {
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Save Settings
+              Update Settings
             </>
           )}
         </motion.button>

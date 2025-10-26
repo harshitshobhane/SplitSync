@@ -9,13 +9,14 @@ import {
 import { apiService } from '../lib/api'
 import { CATEGORIES } from '../utils/constants'
 import { calculateSplitAmounts } from '../utils/calculations'
+import { getCurrencySymbol } from '../utils/dateUtils'
 
 const iconMap = {
   ShoppingCart, Home, UtensilsCrossed, Heart, Zap, Plane, Ticket, 
   Gift, FileTextIcon, HeartPulse, Car, MoreHorizontal
 }
 
-const AddExpensePage = ({ setPage, names }) => {
+const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
   const [formData, setFormData] = useState({
     description: '',
     totalAmount: '',
@@ -33,8 +34,9 @@ const AddExpensePage = ({ setPage, names }) => {
   const createExpenseMutation = useMutation(apiService.createExpense, {
     onSuccess: () => {
       queryClient.invalidateQueries(['expenses'])
+      queryClient.invalidateQueries(['transfers']) // Refresh transfers too for balance calculation
       toast.success('Expense added!')
-      setPage('dashboard')
+      setTimeout(() => setPage('dashboard'), 500)
     },
     onError: () => {
       toast.error('Failed to add expense')
@@ -54,11 +56,12 @@ const AddExpensePage = ({ setPage, names }) => {
       
       const expenseData = {
         description: formData.description,
-        totalAmount: total,
+        total_amount: total,
         category: formData.category,
-        paidBy: formData.paidBy,
-        splitType: formData.splitType,
-        ...shares
+        paid_by: formData.paidBy,
+        split_type: formData.splitType,
+        person1_share: shares.person1Share,
+        person2_share: shares.person2Share
       }
 
       createExpenseMutation.mutate(expenseData)
@@ -75,7 +78,7 @@ const AddExpensePage = ({ setPage, names }) => {
   const CategoryIcon = formData.category ? iconMap[CATEGORIES[formData.category]?.icon] : null
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="h-full overflow-y-auto space-y-4 pb-20 px-3 sm:px-4 scroll-smooth">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl text-sm">
@@ -101,13 +104,13 @@ const AddExpensePage = ({ setPage, names }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="amount" className="text-sm font-medium mb-2 block">
               Amount
             </label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{getCurrencySymbol(currency)}</span>
               <input
                 type="number"
                 id="amount"
@@ -120,26 +123,30 @@ const AddExpensePage = ({ setPage, names }) => {
               />
             </div>
           </div>
-          <div>
-            <label htmlFor="category" className="text-sm font-medium mb-2 block">
-              Category
-            </label>
-            <div className="relative">
-              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <select
-                id="category"
-                value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                className="input pl-10 w-full"
-                required
-              >
-                <option value="">Choose category</option>
-                {Object.entries(CATEGORIES).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+           <div>
+             <label htmlFor="category" className="text-sm font-medium mb-2 block">
+               Category
+             </label>
+             <div className="relative">
+               <select
+                 id="category"
+                 value={formData.category}
+                 onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                 className="input w-full pr-10 appearance-none"
+                 required
+               >
+                 <option value="">Choose category</option>
+                 {Object.entries(CATEGORIES).map(([key, { label }]) => (
+                   <option key={key} value={key}>{label}</option>
+                 ))}
+               </select>
+               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                 <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                 </svg>
+               </div>
+             </div>
+           </div>
         </div>
 
         <div>
@@ -170,11 +177,10 @@ const AddExpensePage = ({ setPage, names }) => {
 
         <div>
           <label className="text-sm font-medium mb-3 block">Split Type</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { value: 'equal', label: 'Equal', icon: Calculator },
-              { value: 'ratio', label: 'Ratio', icon: Percent },
-              { value: 'exact', label: 'Exact', icon: DollarSign }
+              { value: 'ratio', label: 'Ratio', icon: Percent }
             ].map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
@@ -192,55 +198,47 @@ const AddExpensePage = ({ setPage, names }) => {
         </div>
 
         {formData.splitType === 'ratio' && (
-          <div className="card p-4">
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
-                <label htmlFor="ratio" className="text-xs text-muted-foreground mb-1 block">
-                  {names.person1Name}'s %
-                </label>
-                <input
-                  type="number"
-                  id="ratio"
-                  value={formData.person1Ratio}
-                  onChange={(e) => setFormData(prev => ({ ...prev, person1Ratio: e.target.value }))}
-                  min="0"
-                  max="100"
-                  className="input w-full"
-                />
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="card p-4 space-y-3"
+          >
+            <div>
+              <label htmlFor="ratio" className="text-sm font-medium mb-2 block">
+                Split Ratio
+              </label>
+              <select
+                id="ratio"
+                value={formData.person1Ratio}
+                onChange={(e) => setFormData(prev => ({ ...prev, person1Ratio: parseFloat(e.target.value) }))}
+                className="input w-full"
+              >
+                <option value="50">50/50 - Equal</option>
+                <option value="60">60/40 - {names.person1Name} pays more</option>
+                <option value="70">70/30 - {names.person1Name} pays more</option>
+                <option value="80">80/20 - {names.person1Name} pays most</option>
+                <option value="40">40/60 - {names.person2Name} pays more</option>
+                <option value="30">30/70 - {names.person2Name} pays more</option>
+                <option value="20">20/80 - {names.person2Name} pays most</option>
+                <option value="100">100/0 - {names.person1Name} pays all</option>
+                <option value="0">0/100 - {names.person2Name} pays all</option>
+              </select>
+            </div>
+            
+            <div className="bg-muted p-3 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">{names.person1Name}</span>
+                <span className="text-sm font-bold">{formData.person1Ratio}%</span>
               </div>
-              <div className="flex-1 text-center">
-                <p className="text-xs text-muted-foreground mb-1">{names.person2Name}'s share</p>
-                <p className="text-lg font-bold">{100 - (parseFloat(formData.person1Ratio) || 0)}%</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{names.person2Name}</span>
+                <span className="text-sm font-bold">{100 - formData.person1Ratio}%</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
-        {formData.splitType === 'exact' && (
-          <div className="card p-4">
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
-                <label htmlFor="share" className="text-xs text-muted-foreground mb-1 block">
-                  {names.person1Name}'s amount
-                </label>
-                <input
-                  type="number"
-                  id="share"
-                  value={formData.person1Share}
-                  onChange={(e) => setFormData(prev => ({ ...prev, person1Share: e.target.value }))}
-                  step="0.01"
-                  min="0"
-                  max={total}
-                  className="input w-full"
-                />
-              </div>
-              <div className="flex-1 text-center">
-                <p className="text-xs text-muted-foreground mb-1">{names.person2Name}'s share</p>
-                <p className="text-lg font-bold">${getPerson2Share().toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <button
           type="submit"

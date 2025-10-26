@@ -2,16 +2,17 @@ package main
 
 import (
 	"log"
-	"os"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"splitsync-backend/internal/config"
 	"splitsync-backend/internal/database"
 	"splitsync-backend/internal/handlers"
 	"splitsync-backend/internal/middleware"
 	"splitsync-backend/internal/routes"
+	"splitsync-backend/internal/utils"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -25,6 +26,17 @@ func main() {
 	if err := cfg.Validate(); err != nil {
 		log.Fatal("Configuration validation failed:", err)
 	}
+
+	// Initialize JWT secret
+	utils.SetJWTSecret(cfg.JWTSecret)
+
+	// Debug: Log the MongoDB URI (masked for security)
+	uriForLog := cfg.MongoURI
+	if len(uriForLog) > 50 {
+		uriForLog = uriForLog[:50] + "..."
+	}
+	log.Printf("Attempting to connect to MongoDB: %s", uriForLog)
+	log.Println("Important: Make sure your IP is whitelisted in MongoDB Atlas Network Access!")
 
 	// Initialize database connection
 	db, err := database.Connect(cfg.MongoURI)

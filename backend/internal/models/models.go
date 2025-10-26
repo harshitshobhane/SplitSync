@@ -8,12 +8,15 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	Email     string             `json:"email" bson:"email"`
-	Password  string             `json:"-" bson:"password"`
-	Name      string             `json:"name" bson:"name"`
-	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
+	ID              primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Email           string             `json:"email" bson:"email"`
+	Name            string             `json:"name" bson:"name"`
+	AuthProvider    string             `json:"auth_provider" bson:"auth_provider"`     // "firebase", "google"
+	EmailVerified   bool               `json:"email_verified" bson:"email_verified"`
+	ProfilePicture  string             `json:"profile_picture" bson:"profile_picture"`
+	FirebaseUID     string             `json:"firebase_uid" bson:"firebase_uid"`
+	CreatedAt       time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // Expense represents an expense entry
@@ -110,6 +113,26 @@ type RegisterRequest struct {
 	Name     string `json:"name" binding:"required,min=2"`
 }
 
+// VerifyEmailRequest represents email verification request
+type VerifyEmailRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required"`
+}
+
+// SendVerificationCodeRequest represents sending verification code
+type SendVerificationCodeRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// FirebaseTokenRequest represents Firebase token verification request
+type FirebaseTokenRequest struct {
+	FirebaseUID    string `json:"firebase_uid" binding:"required"`
+	Email          string `json:"email"`
+	Name           string `json:"name"`
+	AuthProvider   string `json:"auth_provider"`
+	ProfilePicture string `json:"profile_picture"`
+}
+
 // AuthResponse represents the authentication response
 type AuthResponse struct {
 	Token string `json:"token"`
@@ -135,6 +158,15 @@ type MonthlyReportResponse struct {
 	Expenses       []Expense                  `json:"expenses"`
 	Transfers      []Transfer                 `json:"transfers"`
 	Balance        BalanceResponse            `json:"balance"`
+}
+
+// VerificationCode represents a verification code for email
+type VerificationCode struct {
+	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Email     string             `json:"email" bson:"email"`
+	Code      string             `json:"code" bson:"code"`
+	ExpiresAt time.Time          `json:"expires_at" bson:"expires_at"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 }
 
 // APIResponse represents a generic API response

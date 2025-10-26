@@ -5,14 +5,14 @@ import {
   Zap, Plane, Ticket, Gift, FileText, HeartPulse, Car, MoreHorizontal 
 } from 'lucide-react'
 import { CATEGORIES } from '../utils/constants'
-import { formatDate } from '../utils/dateUtils'
+import { formatDate, formatCurrency } from '../utils/dateUtils'
 
 const iconMap = {
   ShoppingCart, Home, UtensilsCrossed, Heart, Zap, Plane, Ticket, 
   Gift, FileText, HeartPulse, Car, MoreHorizontal
 }
 
-const ActivityItem = ({ item, names }) => {
+const ActivityItem = ({ item, names, currency = 'USD' }) => {
   const isExpense = item.totalAmount !== undefined
   
   const category = isExpense ? CATEGORIES[item.category] || CATEGORIES.other : null
@@ -46,13 +46,13 @@ const ActivityItem = ({ item, names }) => {
               }
             </span>
             <span>•</span>
-            <span>{formatDate(item.timestamp)}</span>
+            <span>{formatDate(item.timestamp || (item.created_at ? { seconds: Math.floor(new Date(item.created_at).getTime() / 1000) } : null))}</span>
           </div>
         </div>
       </div>
       <div className="text-right ml-4">
         <p className={`text-lg font-bold ${isExpense ? 'text-foreground' : 'text-blue-600'}`}>
-          ${isExpense ? item.totalAmount.toFixed(2) : item.amount.toFixed(2)}
+          {formatCurrency(isExpense ? item.totalAmount : item.amount, currency)}
         </p>
         {isExpense && category && (
           <p className="text-xs text-muted-foreground">

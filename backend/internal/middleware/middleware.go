@@ -3,11 +3,11 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
+	"splitsync-backend/internal/utils"
 )
 
 // Logger creates a custom logger middleware with structured logging
@@ -50,7 +50,6 @@ func RateLimit() gin.HandlerFunc {
 }
 
 // Auth creates a JWT authentication middleware
-// Note: This is a placeholder implementation. In production, implement proper JWT validation
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -62,8 +61,8 @@ func Auth() gin.HandlerFunc {
 			return
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
+		// Extract token from "Bearer <token>"
+		if len(authHeader) <= 7 || authHeader[:7] != "Bearer " {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "Invalid authorization header format",
 			})
@@ -71,18 +70,17 @@ func Auth() gin.HandlerFunc {
 			return
 		}
 
-		// Placeholder: In production, validate JWT token here
-		if tokenString == "" {
+		tokenString := authHeader[7:]
+		userID, err := utils.ValidateToken(tokenString)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Token required",
+				"error": "Invalid or expired token",
 			})
 			c.Abort()
 			return
 		}
 
-		// Placeholder: Extract user ID from validated token
-		// For now, using a mock user ID
-		c.Set("user_id", "mock_user_id")
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }
@@ -92,8 +90,9 @@ func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With")
 		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Expose-Headers", "Content-Length")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)

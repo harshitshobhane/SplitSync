@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"time"
 
+	"splitsync-backend/internal/models"
+	"splitsync-backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"splitsync-backend/internal/models"
 )
 
 // AuthHandler handles authentication-related requests
@@ -22,53 +24,87 @@ func NewAuthHandler(db *mongo.Database) *AuthHandler {
 	return &AuthHandler{db: db}
 }
 
-// Login handles user login requests
-func (h *AuthHandler) Login(c *gin.Context) {
-	var req models.LoginRequest
+// VerifyFirebaseToken verifies a Firebase ID token and returns user data
+func (h *AuthHandler) VerifyFirebaseToken(c *gin.Context) {
+	var req models.FirebaseTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
 
+	// TODO: Verify Firebase token with Firebase Admin SDK
+	// For now, accepting the token as valid and storing user data
+
 	collection := h.db.Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Check if user exists by Firebase UID
 	var user models.User
-	err := collection.FindOne(ctx, bson.M{"email": req.Email}).Decode(&user)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+	err := collection.FindOne(ctx, bson.M{"firebase_uid": req.FirebaseUID}).Decode(&user)
+
+	if err != nil && err == mongo.ErrNoDocuments {
+		// User doesn't exist with this Firebase UID
+		// Check if email already exists
+		var existingUser models.User
+		emailErr := collection.FindOne(ctx, bson.M{"email": req.Email}).Decode(&existingUser)
+
+		if emailErr == nil && existingUser.Email == req.Email {
+			// Email already exists - return error
+			c.JSON(http.StatusBadRequest, gin.H{"error": "An account with this email already exists"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+
+		// Create new user
+		user = models.User{
+			Email:          req.Email,
+			Name:           req.Name,
+			AuthProvider:   req.AuthProvider,
+			EmailVerified:  true, // Firebase handles verification
+			ProfilePicture: req.ProfilePicture,
+			FirebaseUID:    req.FirebaseUID,
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		}
+
+		result, err := collection.InsertOne(ctx, user)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+			return
+		}
+		user.ID = result.InsertedID.(primitive.ObjectID)
+	} else if err == nil {
+		// User exists, update info
+		update := bson.M{
+			"$set": bson.M{
+				"name":            req.Name,
+				"profile_picture": req.ProfilePicture,
+				"updated_at":      time.Now(),
+			},
+		}
+		collection.UpdateOne(ctx, bson.M{"_id": user.ID}, update)
+		user.Name = req.Name
+		user.ProfilePicture = req.ProfilePicture
+	}
+
+	// Generate JWT token
+	token, err := utils.GenerateToken(user.ID.Hex())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	// Note: Password verification should be implemented with bcrypt
-	// For now, this is a placeholder implementation
-	if user.Password != req.Password {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-		return
-	}
-
-	// Note: JWT token generation should be implemented
-	// For now, returning a mock token
-	token := "mock_jwt_token_" + user.ID.Hex()
-
-	response := models.AuthResponse{
-		Token: token,
-		User:  user,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user":  user,
+	})
 }
 
-// Register handles user registration requests
-func (h *AuthHandler) Register(c *gin.Context) {
-	var req models.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+// GetCurrentUser returns the current authenticated user
+func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -76,49 +112,23 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Check if user already exists
-	var existingUser models.User
-	err := collection.FindOne(ctx, bson.M{"email": req.Email}).Decode(&existingUser)
-	if err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
-		return
-	}
-
-	// Note: Password should be hashed using bcrypt
-	// For now, storing plain password (NOT RECOMMENDED FOR PRODUCTION)
-	hashedPassword := req.Password
-
-	user := models.User{
-		Email:     req.Email,
-		Password:  hashedPassword,
-		Name:      req.Name,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	result, err := collection.InsertOne(ctx, user)
+	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	user.ID = result.InsertedID.(primitive.ObjectID)
-	user.Password = "" // Don't return password in response
-
-	// Note: JWT token generation should be implemented
-	token := "mock_jwt_token_" + user.ID.Hex()
-
-	response := models.AuthResponse{
-		Token: token,
-		User:  user,
+	var user models.User
+	err = collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&user)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
 	}
 
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
 // Logout handles user logout requests
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// Note: Token blacklisting or session invalidation should be implemented
-	// For now, returning a success message
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

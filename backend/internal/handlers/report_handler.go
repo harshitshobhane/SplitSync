@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"splitsync-backend/internal/models"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"splitsync-backend/internal/models"
 )
 
 type ReportHandler struct {

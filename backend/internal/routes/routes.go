@@ -25,6 +25,7 @@ func SetupRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(v1, authHandler)
+		setupProtectedAuthRoutes(v1, authHandler)
 		setupProtectedRoutes(v1, expenseHandler, transferHandler, settingsHandler, reportHandler)
 	}
 
@@ -32,6 +33,7 @@ func SetupRoutes(
 	api := router.Group("/api")
 	{
 		setupAuthRoutes(api, authHandler)
+		setupProtectedAuthRoutes(api, authHandler)
 		setupProtectedRoutes(api, expenseHandler, transferHandler, settingsHandler, reportHandler)
 	}
 }
@@ -40,9 +42,17 @@ func SetupRoutes(
 func setupAuthRoutes(group *gin.RouterGroup, authHandler *handlers.AuthHandler) {
 	auth := group.Group("/auth")
 	{
-		auth.POST("/login", authHandler.Login)
-		auth.POST("/register", authHandler.Register)
+		auth.POST("/verify", authHandler.VerifyFirebaseToken)
 		auth.POST("/logout", authHandler.Logout)
+	}
+}
+
+// setupProtectedAuthRoutes configures protected auth routes
+func setupProtectedAuthRoutes(group *gin.RouterGroup, authHandler *handlers.AuthHandler) {
+	protected := group.Group("/auth")
+	protected.Use(middleware.Auth())
+	{
+		protected.GET("/me", authHandler.GetCurrentUser)
 	}
 }
 

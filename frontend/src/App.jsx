@@ -1,49 +1,33 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react'
+import React, { useState, useMemo, Suspense, lazy } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useQuery, useMutation, useQueryClient } from 'react-query'
-import toast from 'react-hot-toast'
+import { useQuery } from 'react-query'
 import { 
   Home, 
   Plus, 
   ArrowRightLeft, 
   BarChart3, 
   ArrowLeft,
-  Loader2,
   Settings,
-  Sun,
-  Moon,
-  Laptop,
-  Salad,
-  Utensils,
-  Heart,
-  Ticket,
-  Train,
-  Zap,
-  Gift,
-  FileText,
-  HelpCircle,
-  TrendingUp,
-  Calendar,
-  Users,
-  Wallet,
-  Bell,
+  User,
   Search,
-  Filter,
-  Download,
-  Share2
 } from 'lucide-react'
+import { useAuthContext } from './contexts/AuthContext'
 
 // Lazy load components for better performance
-const DashboardPage = lazy(() => import('./pages/DashboardPage'))
-const AddExpensePage = lazy(() => import('./pages/AddExpensePage'))
-const AddTransferPage = lazy(() => import('./pages/AddTransferPage'))
-const ReportPage = lazy(() => import('./pages/ReportPage'))
-const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'))
+const AddExpensePage = lazy(() => import('./pages/AddExpensePage.jsx'))
+const AddTransferPage = lazy(() => import('./pages/AddTransferPage.jsx'))
+const ReportPage = lazy(() => import('./pages/ReportPage.jsx'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'))
+const AllTransactionsPage = lazy(() => import('./pages/AllTransactionsPage.jsx'))
+const LandingPage = lazy(() => import('./pages/LandingPage.jsx'))
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'))
+const SignupPage = lazy(() => import('./pages/SignupPage.jsx'))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.jsx'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'))
 
 // API functions
 import { apiService as api } from './lib/api'
-import { useTheme } from './hooks/useTheme'
-import { useAuth } from './hooks/useAuth'
 
 // Import constants
 import { CATEGORIES, NAV_ITEMS, PAGE_TITLES, DEFAULT_SETTINGS } from './utils/constants'
@@ -51,14 +35,14 @@ import { calculateBalance } from './utils/calculations'
 import { LoadingSpinner } from './components/ui/FormComponents'
 
 // Header component
-const Header = ({ page, setPage, onSearch, searchQuery, setSearchQuery }) => {
+const Header = ({ page, setPage, onSearch, searchQuery, setSearchQuery, onProfile }) => {
   return (
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-3 sm:px-4 lg:px-6 max-w-screen-lg">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
             {page !== 'dashboard' && (
@@ -77,7 +61,7 @@ const Header = ({ page, setPage, onSearch, searchQuery, setSearchQuery }) => {
           <div className="flex items-center gap-1">
             {page === 'dashboard' && (
               <button 
-                onClick={() => onSearch()}
+                onClick={() => onSearch()} 
                 className="inline-flex items-center justify-center rounded-lg hover:bg-accent h-9 w-9 transition-colors"
               >
                 <Search className="h-4 w-4" />
@@ -90,6 +74,13 @@ const Header = ({ page, setPage, onSearch, searchQuery, setSearchQuery }) => {
             >
               <Settings className="h-5 w-5" />
               <span className="sr-only">Settings</span>
+            </button>
+            <button 
+              onClick={onProfile}
+              className="inline-flex items-center justify-center rounded-lg hover:bg-accent h-9 w-9 transition-colors"
+            >
+              <User className="h-5 w-5" />
+              <span className="sr-only">Profile</span>
             </button>
           </div>
         </div>
@@ -143,33 +134,48 @@ const BottomNav = ({ currentPage, setPage }) => {
 
 // Main App Component
 export default function App() {
-  const [page, setPage] = useState('dashboard')
+  // Declare ALL hooks at the top, before any conditional logic
+  const [authView, setAuthView] = useState(null) // 'landing', 'login', 'signup', 'verify', null
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const { theme, setTheme } = useTheme()
-  const { user, isLoading: authLoading } = useAuth()
-  const queryClient = useQueryClient()
+  const { user, isLoading: authLoading, isAuthenticated } = useAuthContext()
+  const [appPage, setAppPage] = useState('dashboard')
+  const [showProfile, setShowProfile] = useState(false)
 
-  // Fetch data
+  // Fetch data (hooks must be called unconditionally)
   const { data: expenses = [], isLoading: expensesLoading } = useQuery(
     'expenses',
     api.getExpenses,
-    { enabled: !!user }
+    { 
+      enabled: isAuthenticated && !!localStorage.getItem('auth_token'),
+      retry: false,
+      refetchOnWindowFocus: true,
+      refetchInterval: false
+    }
   )
 
   const { data: transfers = [], isLoading: transfersLoading } = useQuery(
     'transfers',
     api.getTransfers,
-    { enabled: !!user }
+    { 
+      enabled: isAuthenticated && !!localStorage.getItem('auth_token'),
+      retry: false,
+      refetchOnWindowFocus: true,
+      refetchInterval: false
+    }
   )
 
   const { data: settings = DEFAULT_SETTINGS } = useQuery(
     'settings',
     api.getSettings,
-    { enabled: !!user }
+    { 
+      enabled: isAuthenticated && !!localStorage.getItem('auth_token'),
+      retry: false,
+      refetchOnWindowFocus: true
+    }
   )
 
-  const loading = expensesLoading || transfersLoading || authLoading
+  const loading = expensesLoading || transfersLoading
 
   // Calculate balance using utility function
   const balanceResult = useMemo(() => {
@@ -185,6 +191,60 @@ export default function App() {
     )
   }, [expenses, searchQuery])
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  // If user needs email verification, show verification screen
+  // This must come before isAuthenticated check
+  if (user && user.needsVerification) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <VerifyEmailPage
+          email={user.email}
+          onBack={() => setAuthView(null)}
+          onSuccess={() => setAuthView(null)}
+        />
+      </Suspense>
+    )
+  }
+
+  // If user is not authenticated, show auth flow
+  if (!isAuthenticated) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        {authView === null && (
+          <LandingPage onSelectMode={setAuthView} />
+        )}
+        {authView === 'login' && (
+          <LoginPage
+            onBack={() => setAuthView(null)}
+            onSuccess={() => setAuthView(null)}
+          />
+        )}
+        {authView === 'signup' && (
+          <SignupPage
+            onBack={() => setAuthView(null)}
+            onSuccess={(email) => {
+              if (email) {
+                setAuthView('verify')
+              } else {
+                setAuthView(null)
+              }
+            }}
+          />
+        )}
+      </Suspense>
+    )
+  }
+
+  // User is authenticated - show main app
+
   const handleSearch = () => {
     setShowSearch(!showSearch)
     if (showSearch) setSearchQuery('')
@@ -193,7 +253,11 @@ export default function App() {
   // Render page content
   const renderPage = () => {
     if (loading) {
-      return <LoadingSpinner />
+      return (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      )
     }
 
     const names = { person1Name: settings.person1Name, person2Name: settings.person2Name }
@@ -202,17 +266,20 @@ export default function App() {
       balance: balanceResult,
       expenses: filteredExpenses,
       transfers,
-      setPage,
+      setPage: setAppPage,
       names,
       searchQuery,
       setSearchQuery,
       showSearch,
-      setShowSearch
+      setShowSearch,
+      currency: settings.currency || 'USD'
     }
 
-    switch (page) {
+    switch (appPage) {
       case 'dashboard':
         return <DashboardPage {...pageProps} />
+      case 'allTransactions':
+        return <AllTransactionsPage {...pageProps} onBack={() => setAppPage('dashboard')} />
       case 'addExpense':
         return <AddExpensePage {...pageProps} />
       case 'addTransfer':
@@ -228,34 +295,46 @@ export default function App() {
 
   return (
     <div className="h-screen w-full overflow-hidden bg-background">
-      <div className="w-full h-screen flex flex-col bg-background">
-        <Header 
-          page={page} 
-          setPage={setPage} 
-          onSearch={handleSearch}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
-        
-        <main className="flex-1 overflow-hidden px-4 sm:px-6 md:px-8 py-4 sm:py-6">
-          <Suspense fallback={<LoadingSpinner />}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={page}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="w-full h-full max-w-4xl mx-auto flex flex-col"
-              >
-                {renderPage()}
-              </motion.div>
-            </AnimatePresence>
-          </Suspense>
-        </main>
-        
-        <BottomNav currentPage={page} setPage={setPage} />
-      </div>
+      {showProfile ? (
+        <Suspense fallback={<LoadingSpinner />}>
+          <ProfilePage
+            onBack={() => setShowProfile(false)}
+            onLogout={() => setShowProfile(false)}
+          />
+        </Suspense>
+      ) : (
+        <div className="w-full h-screen flex flex-col bg-background">
+          {appPage !== 'allTransactions' && (
+            <Header 
+              page={appPage} 
+              setPage={setAppPage} 
+              onSearch={handleSearch}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onProfile={() => setShowProfile(true)}
+            />
+          )}
+          
+          <main className="flex-1 overflow-hidden px-4 sm:px-6 md:px-8 py-4 sm:py-6">
+            <Suspense fallback={<LoadingSpinner />}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={appPage}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="w-full h-full max-w-4xl mx-auto flex flex-col"
+                >
+                  {renderPage()}
+                </motion.div>
+              </AnimatePresence>
+            </Suspense>
+          </main>
+          
+          <BottomNav currentPage={appPage} setPage={setAppPage} />
+        </div>
+      )}
     </div>
   )
 }

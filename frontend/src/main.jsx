@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from 'react-query'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
 import { ThemeProvider } from './hooks/useTheme.jsx'
+import { AuthProvider } from './contexts/AuthContext'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -18,50 +19,70 @@ const queryClient = new QueryClient({
   },
 })
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      element: <App />,
+    },
+  ],
   {
-    path: '/',
-    element: <App />,
-  },
-])
+    future: {
+      v7_startTransition: true,
+    },
+  }
+)
 
 function Root() {
   return (
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: 'var(--toast-bg)',
-              color: 'var(--toast-color)',
-              borderRadius: '12px',
-              padding: '16px',
-              fontSize: '14px',
-              fontWeight: '500',
-            },
-            success: {
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#ffffff',
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: 'var(--toast-bg)',
+                color: 'var(--toast-color)',
+                borderRadius: '12px',
+                padding: '16px',
+                fontSize: '14px',
+                fontWeight: '500',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#ffffff',
+              success: {
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#ffffff',
+                },
               },
-            },
-          }}
-        />
-      </QueryClientProvider>
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#ffffff',
+                },
+              },
+            }}
+          />
+        </QueryClientProvider>
+      </AuthProvider>
     </ThemeProvider>
   )
 }
 
 // Mount the app to the DOM
 const container = document.getElementById('root')
+if (!container) {
+  throw new Error('Failed to find the root container')
+}
+
+// Simple approach: always create a new root to avoid context issues
+if (container._reactRootContainer) {
+  container._reactRootContainer.unmount()
+  delete container._reactRootContainer
+}
+
 const root = createRoot(container)
 root.render(<Root />)
+container._reactRootContainer = root

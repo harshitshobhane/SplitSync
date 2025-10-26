@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	"splitsync-backend/internal/models"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"splitsync-backend/internal/models"
 )
 
 type TransferHandler struct {
@@ -32,7 +33,33 @@ func (h *TransferHandler) GetTransfers(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cursor, err := collection.Find(ctx, bson.M{"user_id": userID})
+	// Convert userID to ObjectID for querying
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		// If conversion fails, try querying with string
+		cursor, err := collection.Find(ctx, bson.M{"user_id": userID})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch transfers"})
+			return
+		}
+		defer cursor.Close(ctx)
+
+		var transfers []models.Transfer
+		if err = cursor.All(ctx, &transfers); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode transfers"})
+			return
+		}
+		c.JSON(http.StatusOK, transfers)
+		return
+	}
+
+	// Query with ObjectID or string (to handle both cases)
+	cursor, err := collection.Find(ctx, bson.M{
+		"$or": []bson.M{
+			{"user_id": userObjectID},
+			{"user_id": userID},
+		},
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch transfers"})
 		return
