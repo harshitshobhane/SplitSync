@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useMutation, useQueryClient } from 'react-query'
+import { useMutation, useQueryClient, useQuery } from 'react-query'
 import toast from 'react-hot-toast'
-import { Loader2, ArrowRightLeft, FileText, Minus, Plus, Wallet } from 'lucide-react'
+import { Loader2, ArrowRightLeft, FileText, Minus, Plus, Wallet, Smartphone, X, CheckCircle, AlertCircle } from 'lucide-react'
 import { apiService } from '../lib/api'
 import { getCurrencySymbol, formatCurrency } from '../utils/dateUtils'
+import { generateUPIAppLinks, openUPIPayment, isUPISupported } from '../utils/upiUtils'
+import { useAuthContext } from '../contexts/AuthContext'
 
 const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   const [formData, setFormData] = useState({
@@ -12,8 +14,24 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     fromUser: 'person1',
     description: ''
   })
+  const [showUPIModal, setShowUPIModal] = useState(false)
   
   const queryClient = useQueryClient()
+  const { user } = useAuthContext()
+  
+  // Fetch couple info to get partner's UPI ID
+  const { data: coupleInfo } = useQuery(
+    'couple',
+    apiService.getCurrentCouple,
+    {
+      enabled: true,
+      staleTime: 2 * 60 * 1000, // 2 minutes
+    }
+  )
+  
+  // Get UPI IDs
+  const currentUserUPI = user?.upi_id || ''
+  const partnerUPI = coupleInfo?.partner?.upi_id || ''
 
   // Calculate balance info
   const person1Net = balance.person1Net || 0
@@ -90,6 +108,53 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   const toUser = formData.fromUser === 'person1' ? 'person2' : 'person1'
   const fromName = formData.fromUser === 'person1' ? names.person1Name : names.person2Name
   const toName = toUser === 'person1' ? names.person1Name : names.person2Name
+  
+  // Get receiver's UPI ID (the person receiving the payment)
+  const receiverUPI = formData.fromUser === 'person1' ? partnerUPI : currentUserUPI
+  const receiverName = toName
+  
+  // Handle UPI payment - only opens the app, doesn't record transfer
+  const handleUPIPayment = (app = 'universal') => {
+    const transferAmount = parseFloat(formData.amount)
+    if (!transferAmount || transferAmount <= 0) {
+      toast.error('Enter a valid amount')
+      return
+    }
+    
+    if (!receiverUPI || !receiverUPI.includes('@')) {
+      toast.error(`${receiverName} hasn't set their UPI ID yet. Ask them to add it in Profile settings.`)
+      return
+    }
+    
+    const description = formData.description || `Payment from ${fromName}`
+    const success = openUPIPayment(receiverUPI, transferAmount, receiverName, description, app)
+    
+    if (success) {
+      toast.success(`Opening ${app === 'universal' ? 'UPI app' : app}... Complete payment and return to record the transfer.`)
+      setShowUPIModal(false)
+      // Don't auto-record - user will record after successful payment
+    } else {
+      toast.error('Failed to open UPI payment')
+    }
+  }
+  
+  // Handle recording transfer after successful UPI payment
+  const handleRecordAfterPayment = () => {
+    const transferAmount = parseFloat(formData.amount)
+    if (!transferAmount || transferAmount <= 0) {
+      toast.error('Enter a valid amount')
+      return
+    }
+
+    const transferData = {
+      amount: transferAmount,
+      from_user: formData.fromUser,
+      to_user: toUser,
+      description: formData.description || `Paid via UPI`
+    }
+
+    createTransferMutation.mutate(transferData)
+  }
 
   return (
     <div className="h-full overflow-y-auto space-y-6 pb-6 px-3 sm:px-4 scroll-smooth">
@@ -97,23 +162,25 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card border border-border rounded-3xl p-4 sm:p-5"
+        className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-4 sm:p-5 shadow-sm"
       >
         <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <Wallet className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-sm font-medium text-muted-foreground truncate">Current Balance</span>
+              <span className="text-sm font-semibold text-muted-foreground truncate">Current Balance</span>
             </div>
             {needsSettle && suggestedAmount > 0.01 && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleQuickSettle}
-                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 whitespace-nowrap flex-shrink-0"
+                className="text-xs font-semibold text-primary hover:text-primary/80 dark:text-primary dark:hover:text-primary/80 whitespace-nowrap flex-shrink-0 px-2 py-1 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
               >
                 Settle All
-              </button>
+              </motion.button>
             )}
         </div>
-        <p className={`text-lg sm:text-xl font-semibold ${balanceInfo.color} break-words`}>
+        <p className={`text-lg sm:text-xl font-bold ${balanceInfo.color} break-words`}>
           {balanceInfo.message}
         </p>
       </motion.div>
@@ -135,42 +202,48 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           </button>
         </div>
 
-        <div className="bg-card border border-border rounded-3xl p-6">
+        <div className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center justify-between">
             {/* From */}
             <div className="flex-1 text-center">
-              <div className={`inline-flex h-14 w-14 items-center justify-center rounded-full mb-3 ${
-                formData.fromUser === 'person1' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground'
-              }`}>
-                <span className="text-xl font-semibold">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 shadow-md transition-all ${
+                  formData.fromUser === 'person1' 
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white shadow-blue-500/30' 
+                    : 'bg-muted/60 dark:bg-muted/40 text-muted-foreground'
+                }`}
+              >
+                <span className="text-2xl font-bold">
                   {fromName.charAt(0)}
                 </span>
-              </div>
-              <p className="text-sm font-semibold">{fromName}</p>
+              </motion.div>
+              <p className="text-sm font-semibold text-foreground">{fromName}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Payer</p>
             </div>
 
             {/* Arrow */}
             <div className="px-4">
-              <div className="h-px w-12 bg-border relative">
-                <ArrowRightLeft className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-3 w-3 text-muted-foreground bg-background" />
+              <div className="h-px w-12 bg-border/60 relative">
+                <ArrowRightLeft className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-4 w-4 text-muted-foreground bg-card dark:bg-card p-0.5" />
               </div>
             </div>
 
             {/* To */}
             <div className="flex-1 text-center">
-              <div className={`inline-flex h-14 w-14 items-center justify-center rounded-full mb-3 ${
-                formData.fromUser === 'person1' 
-                  ? 'bg-gray-200 dark:bg-gray-700 text-muted-foreground'
-                  : 'bg-blue-600 text-white'
-              }`}>
-                <span className="text-xl font-semibold">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 shadow-md transition-all ${
+                  formData.fromUser === 'person1' 
+                    ? 'bg-muted/60 dark:bg-muted/40 text-muted-foreground'
+                    : 'bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white shadow-blue-500/30'
+                }`}
+              >
+                <span className="text-2xl font-bold">
                   {toName.charAt(0)}
                 </span>
-            </div>
-              <p className="text-sm font-semibold">{toName}</p>
+              </motion.div>
+              <p className="text-sm font-semibold text-foreground">{toName}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Receiver</p>
             </div>
           </div>
@@ -188,9 +261,9 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           <label className="text-sm font-medium">Amount</label>
           </div>
         
-        <div className="bg-card border border-border rounded-3xl p-4">
+        <div className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="text-2xl font-semibold text-muted-foreground">
+            <span className="text-2xl font-bold text-foreground">
               {getCurrencySymbol(currency)}
             </span>
             <input
@@ -200,7 +273,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               placeholder="0.00"
               step="0.01"
               min="0.01"
-              className="flex-1 text-2xl font-semibold bg-transparent border-none outline-none focus:outline-none"
+              className="flex-1 text-2xl font-bold bg-transparent border-none outline-none focus:outline-none text-foreground placeholder:text-muted-foreground/50"
               required
             />
           </div>
@@ -209,14 +282,16 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
         {/* Quick Amounts */}
         <div className="grid grid-cols-4 gap-2">
           {[100, 250, 500, 1000].map((amount) => (
-            <button
+            <motion.button
               key={amount}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, amount: amount.toString() }))}
-              className="py-2.5 px-3 rounded-2xl bg-muted hover:bg-accent transition-colors text-sm font-medium border border-border"
+              className="py-2.5 px-3 rounded-2xl bg-muted/80 dark:bg-muted/60 hover:bg-accent dark:hover:bg-accent/80 transition-all text-sm font-semibold border border-border/40 hover:border-border active:scale-95"
             >
               {getCurrencySymbol(currency)}{amount}
-            </button>
+            </motion.button>
           ))}
         </div>
       </motion.div>
@@ -231,22 +306,49 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           <FileText className="h-4 w-4 text-muted-foreground" />
           <label className="text-sm font-medium">Note (Optional)</label>
           </div>
-        <div className="bg-card border border-border rounded-3xl p-4">
+        <div className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-4 shadow-sm">
             <input
               type="text"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             placeholder="Add a note..."
-            className="w-full bg-transparent border-none outline-none focus:outline-none text-sm"
+            className="w-full bg-transparent border-none outline-none focus:outline-none text-sm text-foreground placeholder:text-muted-foreground/50"
             />
           </div>
       </motion.div>
+
+      {/* UPI Payment Button - Only show if amount is entered and receiver has UPI ID */}
+      {formData.amount && parseFloat(formData.amount) > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          {receiverUPI && receiverUPI.includes('@') ? (
+            <button
+              type="button"
+              onClick={() => setShowUPIModal(true)}
+              className="w-full py-4 rounded-3xl bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 dark:from-blue-600 dark:via-blue-700 dark:to-purple-700 text-white font-semibold text-base flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/20 dark:shadow-blue-500/30"
+            >
+              <Smartphone className="h-5 w-5" />
+              Pay via UPI (No Charges)
+            </button>
+          ) : (
+            <div className="w-full py-3.5 px-4 rounded-3xl bg-card border border-border/60 text-center backdrop-blur-sm">
+              <p className="text-sm text-muted-foreground">
+                {receiverName} needs to add their UPI ID in Profile settings to enable UPI payments
+              </p>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Submit Button */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
+        className="space-y-2"
       >
         <button
           type="submit"
@@ -266,7 +368,161 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
             </>
           )}
         </button>
+        
+        {/* Info text */}
+        {receiverUPI && receiverUPI.includes('@') && formData.amount && parseFloat(formData.amount) > 0 && (
+          <p className="text-xs text-muted-foreground text-center">
+            Or use "Pay via UPI" above, then record the transfer after payment is successful
+          </p>
+        )}
       </motion.div>
+
+      {/* UPI Payment Modal */}
+      <AnimatePresence>
+        {showUPIModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setShowUPIModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card/95 dark:bg-card/98 backdrop-blur-xl border border-border/60 rounded-3xl p-6 max-w-md w-full shadow-2xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden"
+            >
+              {/* Subtle gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 pointer-events-none" />
+              
+              <div className="relative z-10">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">Pay via UPI</h3>
+                    <p className="text-xs text-muted-foreground mt-1">No charges - Direct payment</p>
+                  </div>
+                  <button
+                    onClick={() => setShowUPIModal(false)}
+                    className="p-2 hover:bg-accent rounded-xl transition-colors active:scale-95"
+                    aria-label="Close"
+                  >
+                    <X className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                </div>
+                
+                {/* Payment Details Card */}
+                <div className="mb-6 p-4 bg-gradient-to-br from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/20 border border-border/40 rounded-2xl backdrop-blur-sm">
+                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Paying to</p>
+                  <p className="text-lg font-bold text-foreground mb-1">{receiverName}</p>
+                  <p className="text-xs text-muted-foreground mb-3 font-mono">{receiverUPI}</p>
+                  <div className="pt-3 border-t border-border/40">
+                    <p className="text-2xl font-extrabold text-foreground">{formatCurrency(parseFloat(formData.amount), currency)}</p>
+                  </div>
+                </div>
+
+                {/* UPI App Selection */}
+                <div className="space-y-2.5 mb-6">
+                  <p className="text-sm font-semibold text-foreground mb-3">Choose UPI app:</p>
+                  
+                  {/* Universal UPI (Default) */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleUPIPayment('universal')}
+                    className="w-full p-4 rounded-2xl bg-gradient-to-r from-primary to-primary/90 dark:from-primary dark:to-primary/80 text-primary-foreground font-semibold flex items-center justify-center gap-3 hover:shadow-lg transition-all shadow-md"
+                  >
+                    <Smartphone className="h-5 w-5" />
+                    Open Default UPI App
+                  </motion.button>
+
+                  {/* UPI App Grid */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* PhonePe */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleUPIPayment('phonepe')}
+                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#5F259F] to-[#4A1E7A] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                    >
+                      <span className="text-2xl">📱</span>
+                      <span className="text-sm">PhonePe</span>
+                    </motion.button>
+
+                    {/* Paytm */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleUPIPayment('paytm')}
+                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#00BAF2] to-[#0099CC] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                    >
+                      <span className="text-2xl">💳</span>
+                      <span className="text-sm">Paytm</span>
+                    </motion.button>
+
+                    {/* Google Pay */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleUPIPayment('googlepay')}
+                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#4285F4] to-[#1A73E8] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                    >
+                      <span className="text-2xl font-bold">G</span>
+                      <span className="text-sm">Google Pay</span>
+                    </motion.button>
+
+                    {/* BHIM UPI */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleUPIPayment('bhim')}
+                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#6C5CE7] to-[#5A4FCF] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                    >
+                      <span className="text-2xl">🇮🇳</span>
+                      <span className="text-sm">BHIM UPI</span>
+                    </motion.button>
+                  </div>
+                </div>
+
+                {/* Confirmation Section */}
+                <div className="p-4 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/50 rounded-2xl backdrop-blur-sm">
+                  <div className="flex items-start gap-2 mb-3">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                      After completing payment in your UPI app, return here and confirm to record the transfer.
+                    </p>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      handleRecordAfterPayment()
+                      setShowUPIModal(false)
+                    }}
+                    disabled={createTransferMutation.isLoading || !formData.amount}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 dark:from-amber-600 dark:to-amber-700 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all shadow-md"
+                  >
+                    {createTransferMutation.isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Recording...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        I've Paid - Record Transfer
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

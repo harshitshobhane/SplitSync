@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { 
   ArrowRightLeft, ShoppingCart, Home, UtensilsCrossed, Heart, 
   Zap, Plane, Ticket, Gift, FileText, HeartPulse, Car, MoreHorizontal,
-  MessageSquare, Send, ChevronDown, ChevronUp, User
+  MessageSquare, Send, ChevronDown, ChevronUp, User, RotateCcw, Loader2
 } from 'lucide-react'
 import { CATEGORIES } from '../utils/constants'
 import { formatDateShort, formatCurrency } from '../utils/dateUtils'
@@ -16,13 +16,14 @@ const iconMap = {
   Gift, FileText, HeartPulse, Car, MoreHorizontal
 }
 
-const ActivityItem = ({ item, names, currency = 'USD', currentUserId }) => {
+const ActivityItem = ({ item, names, currency = 'USD', currentUserId, isMostRecent = false, onReverse }) => {
   const isExpense = item.totalAmount !== undefined
   const isQueued = !!(item.queued || item._queued)
   const [showComments, setShowComments] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [isAddingComment, setIsAddingComment] = useState(false)
+  const [isReversing, setIsReversing] = useState(false)
   
   const queryClient = useQueryClient()
   
@@ -54,6 +55,56 @@ const ActivityItem = ({ item, names, currency = 'USD', currentUserId }) => {
     if (!newComment.trim()) return
     setIsAddingComment(true)
     addCommentMutation.mutate(newComment.trim())
+  }
+  
+  // Handle reverse transaction
+  const handleReverse = async () => {
+    if (!window.confirm(`Are you sure you want to reverse this ${isExpense ? 'expense' : 'transfer'}?`)) {
+      return
+    }
+    
+    setIsReversing(true)
+    
+    if (onReverse) {
+      try {
+        await onReverse(item)
+        toast.success(`${isExpense ? 'Expense' : 'Transfer'} reversed successfully!`)
+      } catch (error) {
+        toast.error(`Failed to reverse ${isExpense ? 'expense' : 'transfer'}`)
+      } finally {
+        setIsReversing(false)
+      }
+    } else {
+      // Fallback: create reverse transfer or delete expense
+      if (!isExpense) {
+        // For transfers: create opposite transfer
+        try {
+          const reverseTransfer = {
+            amount: item.amount || item.totalAmount || 0,
+            from_user: item.toUser || (item.fromUser === 'person1' ? 'person2' : 'person1'),
+            to_user: item.fromUser || (item.toUser === 'person1' ? 'person2' : 'person1'),
+            description: `Reversed: ${item.description || 'Transfer'}`
+          }
+          await apiService.createTransfer(reverseTransfer)
+          queryClient.invalidateQueries(['transfers'])
+          queryClient.invalidateQueries(['expenses'])
+          toast.success('Transfer reversed successfully!')
+        } catch (error) {
+          toast.error('Failed to reverse transfer')
+        }
+      } else {
+        // For expenses: delete the expense
+        try {
+          await apiService.deleteExpense(item.id || item._id)
+          queryClient.invalidateQueries(['expenses'])
+          queryClient.invalidateQueries(['transfers'])
+          toast.success('Expense deleted successfully!')
+        } catch (error) {
+          toast.error('Failed to delete expense')
+        }
+      }
+      setIsReversing(false)
+    }
   }
 
   return (
@@ -216,10 +267,34 @@ const ActivityItem = ({ item, names, currency = 'USD', currentUserId }) => {
               </div>
             )}
 
-            {/* Time */}
-            <p className="text-[11px] text-muted-foreground/70 font-medium tracking-wide">
-              {formatDateShort(item.timestamp || (item.created_at ? { seconds: Math.floor(new Date(item.created_at).getTime() / 1000) } : null))}
-            </p>
+            {/* Time and Reverse Button */}
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground/70 font-medium tracking-wide">
+                {formatDateShort(item.timestamp || (item.created_at ? { seconds: Math.floor(new Date(item.created_at).getTime() / 1000) } : null))}
+              </p>
+              
+              {/* Reverse Button - Only show for most recent transaction */}
+              {isMostRecent && (
+                <button
+                  onClick={handleReverse}
+                  disabled={isReversing}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50"
+                  title={`Reverse this ${isExpense ? 'expense' : 'transfer'}`}
+                >
+                  {isReversing ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Reversing...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-3 w-3" />
+                      Reverse
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
             
             {/* Notes */}
             {isExpense && hasNotes && (

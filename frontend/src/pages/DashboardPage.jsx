@@ -242,7 +242,12 @@ const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQue
                     animate={{ opacity: 1, y: 0 }} 
                     transition={{ delay: i * 0.05 }}
                   >
-                    <ActivityItem item={item} names={names} currency={currency} />
+                    <ActivityItem 
+                      item={item} 
+                      names={names} 
+                      currency={currency} 
+                      isMostRecent={i === 0}
+                    />
                   </motion.div>
                 ))}
               </div>

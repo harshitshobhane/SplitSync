@@ -62,6 +62,19 @@ const AllTransactionsPage = ({ expenses, transfers, names, currency, setPage, on
     return titles[key] || key
   }
 
+  // Find the most recent transaction ID across all groups
+  const mostRecentTransactionId = useMemo(() => {
+    const allTransactions = Object.values(groupedTransactions).flat()
+    if (allTransactions.length === 0) return null
+    
+    const sortedTransactions = [...allTransactions].sort((a, b) => {
+      const aTime = a.timestamp?.seconds || (a.created_at ? Math.floor(new Date(a.created_at).getTime() / 1000) : 0)
+      const bTime = b.timestamp?.seconds || (b.created_at ? Math.floor(new Date(b.created_at).getTime() / 1000) : 0)
+      return bTime - aTime
+    })
+    return sortedTransactions[0]?.id || sortedTransactions[0]?._id
+  }, [groupedTransactions])
+
   const renderSection = (key, transactions) => {
     if (transactions.length === 0) return null
 
@@ -78,16 +91,25 @@ const AllTransactionsPage = ({ expenses, transfers, names, currency, setPage, on
           </span>
         </div>
         <div className="space-y-2.5">
-          {transactions.map((item, i) => (
-            <motion.div
-              key={item.id || `${key}-${i}`}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.03 }}
-            >
-              <ActivityItem item={item} names={names} currency={currency} />
-            </motion.div>
-          ))}
+          {transactions.map((item, i) => {
+            const isMostRecent = (item.id || item._id) === mostRecentTransactionId
+            
+            return (
+              <motion.div
+                key={item.id || `${key}-${i}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.03 }}
+              >
+                <ActivityItem 
+                  item={item} 
+                  names={names} 
+                  currency={currency} 
+                  isMostRecent={isMostRecent}
+                />
+              </motion.div>
+            )
+          })}
         </div>
       </div>
     )
