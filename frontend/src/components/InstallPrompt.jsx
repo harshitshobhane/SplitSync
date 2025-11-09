@@ -26,28 +26,45 @@ const InstallPrompt = () => {
     // Detect if mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     
-    // Only show on mobile devices or if beforeinstallprompt is available
-    if (isMobile || window.matchMedia('(display-mode: browser)').matches) {
-      // Show prompt if not dismissed or dismissed more than 7 days ago
-      if (!dismissedPrompt || daysSinceDismissed > 7) {
-        // Listen for beforeinstallprompt event (Android/Chrome)
-        const handler = (e) => {
-          e.preventDefault()
-          setDeferredPrompt(e)
-          // Show prompt immediately
+    // Show prompt if not dismissed or dismissed more than 7 days ago
+    if (!dismissedPrompt || daysSinceDismissed > 7) {
+      let hasDeferredPrompt = false
+      
+      // Listen for beforeinstallprompt event (Android/Chrome)
+      const handler = (e) => {
+        e.preventDefault()
+        setDeferredPrompt(e)
+        hasDeferredPrompt = true
+        // Show prompt when beforeinstallprompt fires
+        setShowPrompt(true)
+      }
+      
+      window.addEventListener('beforeinstallprompt', handler)
+      
+      // For mobile devices, show after a short delay (even without beforeinstallprompt)
+      // This covers iOS and other browsers
+      if (isMobile) {
+        // Show after 1 second for mobile devices
+        const timer = setTimeout(() => {
           setShowPrompt(true)
-        }
-        
-        window.addEventListener('beforeinstallprompt', handler)
-        
-        // For iOS or devices without beforeinstallprompt, show immediately
-        if (isMobile) {
-          // Show immediately for mobile devices
-          setShowPrompt(true)
-        }
+        }, 1000)
         
         return () => {
           window.removeEventListener('beforeinstallprompt', handler)
+          clearTimeout(timer)
+        }
+      } else {
+        // For desktop, show after a delay to allow beforeinstallprompt to fire
+        // If beforeinstallprompt fires, it will show immediately
+        // Otherwise, show after 2 seconds anyway (for browsers that support PWA but don't fire the event)
+        const timer = setTimeout(() => {
+          // Show prompt even without beforeinstallprompt for desktop
+          setShowPrompt(true)
+        }, 2000)
+        
+        return () => {
+          window.removeEventListener('beforeinstallprompt', handler)
+          clearTimeout(timer)
         }
       }
     }
