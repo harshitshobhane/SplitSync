@@ -36,6 +36,7 @@ import { apiService as api } from './lib/api'
 import { CATEGORIES, NAV_ITEMS, PAGE_TITLES, DEFAULT_SETTINGS } from './utils/constants'
 import { calculateBalance } from './utils/calculations'
 import { LoadingSpinner } from './components/ui/FormComponents'
+import InstallPrompt from './components/InstallPrompt'
 
 // Header component
 const Header = ({ page, setPage, onSearch, searchQuery, setSearchQuery, onProfile }) => {
@@ -344,7 +345,9 @@ export default function App() {
   if (authLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
-        <LoadingSpinner />
+        <div className="flex items-center justify-center h-full w-full">
+          <LoadingSpinner />
+        </div>
       </div>
     )
   }
@@ -403,7 +406,7 @@ export default function App() {
   const renderPage = () => {
     if (loading) {
       return (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center h-full w-full">
           <LoadingSpinner />
         </div>
       )
@@ -469,7 +472,11 @@ export default function App() {
           )}
           
           <main className="flex-1 overflow-hidden px-4 sm:px-6 md:px-8 py-4 sm:py-6">
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-full w-full">
+                <LoadingSpinner />
+              </div>
+            }>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={appPage}
@@ -477,7 +484,7 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="w-full h-full max-w-4xl mx-auto flex flex-col"
+                  className="w-full h-full max-w-4xl mx-auto flex flex-col relative"
                 >
                   {renderPage()}
                 </motion.div>
@@ -488,6 +495,9 @@ export default function App() {
           <BottomNav currentPage={appPage} setPage={setAppPage} />
         </div>
       )}
+      
+      {/* PWA Install Prompt - Only show when NOT authenticated */}
+      {!isAuthenticated && <InstallPrompt />}
     </div>
   )
 }

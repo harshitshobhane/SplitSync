@@ -95,19 +95,19 @@ const AllTransactionsPage = ({ expenses, transfers, names, currency, setPage, on
             const isMostRecent = (item.id || item._id) === mostRecentTransactionId
             
             return (
-              <motion.div
-                key={item.id || `${key}-${i}`}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.03 }}
-              >
+            <motion.div
+              key={item.id || `${key}-${i}`}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.03 }}
+            >
                 <ActivityItem 
                   item={item} 
                   names={names} 
                   currency={currency} 
                   isMostRecent={isMostRecent}
                 />
-              </motion.div>
+            </motion.div>
             )
           })}
         </div>

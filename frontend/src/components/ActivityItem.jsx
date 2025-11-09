@@ -269,9 +269,9 @@ const ActivityItem = ({ item, names, currency = 'USD', currentUserId, isMostRece
 
             {/* Time and Reverse Button */}
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] text-muted-foreground/70 font-medium tracking-wide">
-                {formatDateShort(item.timestamp || (item.created_at ? { seconds: Math.floor(new Date(item.created_at).getTime() / 1000) } : null))}
-              </p>
+            <p className="text-[11px] text-muted-foreground/70 font-medium tracking-wide">
+              {formatDateShort(item.timestamp || (item.created_at ? { seconds: Math.floor(new Date(item.created_at).getTime() / 1000) } : null))}
+            </p>
               
               {/* Reverse Button - Only show for most recent transaction */}
               {isMostRecent && (

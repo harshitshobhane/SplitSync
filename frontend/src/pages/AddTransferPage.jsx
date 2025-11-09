@@ -131,14 +131,13 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     
     if (success) {
       toast.success(`Opening ${app === 'universal' ? 'UPI app' : app}... Complete payment and return to record the transfer.`)
-      setShowUPIModal(false)
-      // Don't auto-record - user will record after successful payment
+      // Keep modal open so user can record after payment
     } else {
       toast.error('Failed to open UPI payment')
     }
   }
   
-  // Handle recording transfer after successful UPI payment
+  // Handle recording transfer after UPI payment
   const handleRecordAfterPayment = () => {
     const transferAmount = parseFloat(formData.amount)
     if (!transferAmount || transferAmount <= 0) {
@@ -152,8 +151,8 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       to_user: toUser,
       description: formData.description || `Paid via UPI`
     }
-
     createTransferMutation.mutate(transferData)
+    setShowUPIModal(false)
   }
 
   return (
@@ -202,16 +201,16 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           </button>
         </div>
 
-        <div className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-6 shadow-sm">
+        <div className="bg-card border border-border rounded-3xl p-6">
           <div className="flex items-center justify-between">
             {/* From */}
             <div className="flex-1 text-center">
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 shadow-md transition-all ${
-                  formData.fromUser === 'person1' 
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white shadow-blue-500/30' 
-                    : 'bg-muted/60 dark:bg-muted/40 text-muted-foreground'
+                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 transition-all border ${
+                formData.fromUser === 'person1' 
+                    ? 'bg-primary text-primary-foreground border-primary/20' 
+                    : 'bg-muted text-muted-foreground border-border'
                 }`}
               >
                 <span className="text-2xl font-bold">
@@ -233,10 +232,10 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
             <div className="flex-1 text-center">
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 shadow-md transition-all ${
-                  formData.fromUser === 'person1' 
-                    ? 'bg-muted/60 dark:bg-muted/40 text-muted-foreground'
-                    : 'bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white shadow-blue-500/30'
+                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 transition-all border ${
+                formData.fromUser === 'person1' 
+                    ? 'bg-muted text-muted-foreground border-border'
+                    : 'bg-primary text-primary-foreground border-primary/20'
                 }`}
               >
                 <span className="text-2xl font-bold">
@@ -261,7 +260,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           <label className="text-sm font-medium">Amount</label>
           </div>
         
-        <div className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-4 shadow-sm">
+        <div className="bg-card border border-border rounded-3xl p-4">
           <div className="flex items-center gap-3">
             <span className="text-2xl font-bold text-foreground">
               {getCurrencySymbol(currency)}
@@ -288,7 +287,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, amount: amount.toString() }))}
-              className="py-2.5 px-3 rounded-2xl bg-muted/80 dark:bg-muted/60 hover:bg-accent dark:hover:bg-accent/80 transition-all text-sm font-semibold border border-border/40 hover:border-border active:scale-95"
+              className="py-2.5 px-3 rounded-2xl bg-muted hover:bg-accent transition-all text-sm font-semibold border border-border active:scale-95"
             >
               {getCurrencySymbol(currency)}{amount}
             </motion.button>
@@ -306,7 +305,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           <FileText className="h-4 w-4 text-muted-foreground" />
           <label className="text-sm font-medium">Note (Optional)</label>
           </div>
-        <div className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-4 shadow-sm">
+        <div className="bg-card border border-border rounded-3xl p-4">
             <input
               type="text"
               value={formData.description}
@@ -328,13 +327,13 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
             <button
               type="button"
               onClick={() => setShowUPIModal(true)}
-              className="w-full py-4 rounded-3xl bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 dark:from-blue-600 dark:via-blue-700 dark:to-purple-700 text-white font-semibold text-base flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/20 dark:shadow-blue-500/30"
+              className="w-full py-4 rounded-3xl bg-foreground text-background font-semibold text-base flex items-center justify-center gap-2 transition-all hover:opacity-95 active:scale-[0.98] border border-border/20"
             >
               <Smartphone className="h-5 w-5" />
               Pay via UPI (No Charges)
             </button>
           ) : (
-            <div className="w-full py-3.5 px-4 rounded-3xl bg-card border border-border/60 text-center backdrop-blur-sm">
+            <div className="w-full py-3.5 px-4 rounded-3xl bg-card border border-border text-center">
               <p className="text-sm text-muted-foreground">
                 {receiverName} needs to add their UPI ID in Profile settings to enable UPI payments
               </p>
@@ -393,11 +392,8 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-card/95 dark:bg-card/98 backdrop-blur-xl border border-border/60 rounded-3xl p-6 max-w-md w-full shadow-2xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden"
+              className="bg-card border border-border rounded-3xl p-6 max-w-md w-full relative overflow-hidden"
             >
-              {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 pointer-events-none" />
-              
               <div className="relative z-10">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -415,11 +411,11 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                 </div>
                 
                 {/* Payment Details Card */}
-                <div className="mb-6 p-4 bg-gradient-to-br from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/20 border border-border/40 rounded-2xl backdrop-blur-sm">
+                <div className="mb-6 p-4 bg-muted/30 dark:bg-muted/20 border border-border rounded-2xl">
                   <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Paying to</p>
                   <p className="text-lg font-bold text-foreground mb-1">{receiverName}</p>
                   <p className="text-xs text-muted-foreground mb-3 font-mono">{receiverUPI}</p>
-                  <div className="pt-3 border-t border-border/40">
+                  <div className="pt-3 border-t border-border">
                     <p className="text-2xl font-extrabold text-foreground">{formatCurrency(parseFloat(formData.amount), currency)}</p>
                   </div>
                 </div>
@@ -430,10 +426,10 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                   
                   {/* Universal UPI (Default) */}
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => handleUPIPayment('universal')}
-                    className="w-full p-4 rounded-2xl bg-gradient-to-r from-primary to-primary/90 dark:from-primary dark:to-primary/80 text-primary-foreground font-semibold flex items-center justify-center gap-3 hover:shadow-lg transition-all shadow-md"
+                    className="w-full p-4 rounded-2xl bg-foreground text-background font-semibold flex items-center justify-center gap-3 transition-all border border-border/20"
                   >
                     <Smartphone className="h-5 w-5" />
                     Open Default UPI App
@@ -443,10 +439,10 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                   <div className="grid grid-cols-2 gap-2.5">
                     {/* PhonePe */}
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
                       onClick={() => handleUPIPayment('phonepe')}
-                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#5F259F] to-[#4A1E7A] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                      className="p-3.5 rounded-2xl bg-[#5F259F] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#5F259F]/20"
                     >
                       <span className="text-2xl">📱</span>
                       <span className="text-sm">PhonePe</span>
@@ -454,10 +450,10 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
 
                     {/* Paytm */}
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
                       onClick={() => handleUPIPayment('paytm')}
-                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#00BAF2] to-[#0099CC] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                      className="p-3.5 rounded-2xl bg-[#00BAF2] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#00BAF2]/20"
                     >
                       <span className="text-2xl">💳</span>
                       <span className="text-sm">Paytm</span>
@@ -465,10 +461,10 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
 
                     {/* Google Pay */}
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
                       onClick={() => handleUPIPayment('googlepay')}
-                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#4285F4] to-[#1A73E8] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                      className="p-3.5 rounded-2xl bg-[#4285F4] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#4285F4]/20"
                     >
                       <span className="text-2xl font-bold">G</span>
                       <span className="text-sm">Google Pay</span>
@@ -476,10 +472,10 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
 
                     {/* BHIM UPI */}
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
                       onClick={() => handleUPIPayment('bhim')}
-                      className="p-3.5 rounded-2xl bg-gradient-to-br from-[#6C5CE7] to-[#5A4FCF] text-white font-semibold flex flex-col items-center justify-center gap-2 hover:shadow-lg transition-all shadow-md"
+                      className="p-3.5 rounded-2xl bg-[#6C5CE7] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#6C5CE7]/20"
                     >
                       <span className="text-2xl">🇮🇳</span>
                       <span className="text-sm">BHIM UPI</span>
@@ -487,23 +483,20 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                   </div>
                 </div>
 
-                {/* Confirmation Section */}
-                <div className="p-4 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/50 rounded-2xl backdrop-blur-sm">
-                  <div className="flex items-start gap-2 mb-3">
-                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-                      After completing payment in your UPI app, return here and confirm to record the transfer.
+                {/* Record Transfer Section */}
+                <div className="p-4 bg-muted/30 dark:bg-muted/20 border border-border rounded-2xl">
+                  <div className="flex items-start gap-2 mb-4">
+                    <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-foreground leading-relaxed">
+                      After completing payment in your UPI app, return here and click below to record the transfer.
                     </p>
                   </div>
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      handleRecordAfterPayment()
-                      setShowUPIModal(false)
-                    }}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={handleRecordAfterPayment}
                     disabled={createTransferMutation.isLoading || !formData.amount}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 dark:from-amber-600 dark:to-amber-700 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all shadow-md"
+                    className="w-full py-3 rounded-xl bg-foreground text-background font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-border/20"
                   >
                     {createTransferMutation.isLoading ? (
                       <>
@@ -513,7 +506,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4" />
-                        I've Paid - Record Transfer
+                        Record Transfer
                       </>
                     )}
                   </motion.button>
