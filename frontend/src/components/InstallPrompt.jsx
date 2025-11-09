@@ -24,9 +24,12 @@ const InstallPrompt = () => {
     const dismissed = sessionStorage.getItem('pwa-install-dismissed')
     
     if (!dismissed) {
+      let deferredPromptEvent = null
+      
       // Listen for beforeinstallprompt event (Android/Chrome)
       const handler = (e) => {
         e.preventDefault()
+        deferredPromptEvent = e
         setDeferredPrompt(e)
       }
       
@@ -48,25 +51,39 @@ const InstallPrompt = () => {
     if (deferredPrompt) {
       // Android/Chrome - use native prompt
       try {
+        // Show the install prompt (this is synchronous, not async)
         deferredPrompt.prompt()
+        
+        // Wait for the user to respond to the prompt
         const { outcome } = await deferredPrompt.userChoice
         
+        console.log(`User response to the install prompt: ${outcome}`)
+        
         if (outcome === 'accepted') {
+          console.log('User accepted the install prompt')
           setShowPrompt(false)
+          // Clear session storage so it can show again if needed
+          sessionStorage.removeItem('pwa-install-dismissed')
         } else {
+          console.log('User dismissed the install prompt')
           handleDismiss()
         }
         
+        // Clear the deferredPrompt so it can only be used once
         setDeferredPrompt(null)
       } catch (error) {
-        console.error('Install error:', error)
-        handleDismiss()
+        console.error('Error showing install prompt:', error)
+        // If there's an error, still show instructions
+        // Don't dismiss, let user see the instructions
+        setDeferredPrompt(null)
       }
     } else if (isIOS) {
       // iOS - instructions are already shown, keep modal open so user can follow them
       // Don't dismiss, let user see the instructions
+      console.log('iOS device - showing manual install instructions')
     } else {
       // Other browsers - instructions are shown, keep modal open
+      console.log('No install prompt available - showing manual instructions')
     }
   }
 
