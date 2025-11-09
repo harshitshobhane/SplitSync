@@ -91,28 +91,5 @@ const root = createRoot(container)
 root.render(<Root />)
 container._reactRootContainer = root
 
-// Register Service Worker (PWA)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    const swUrl = '/sw.js'
-    navigator.serviceWorker.register(swUrl).then((reg) => {
-      // Update prompt
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing
-        if (!newWorker) return
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            const wantsUpdate = confirm('A new version of SplitSync is available. Update now?')
-            if (wantsUpdate && reg.waiting) {
-              reg.waiting.postMessage({ type: 'SKIP_WAITING' })
-            }
-          }
-        })
-      })
-      // Reload when the new SW takes control
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload()
-      })
-    }).catch(() => {})
-  })
-}
+// Service Worker is auto-registered by VitePWA plugin
+// No manual registration needed

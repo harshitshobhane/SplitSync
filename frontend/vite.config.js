@@ -7,20 +7,36 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      strategies: 'generateSW',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\./i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          }
+        ]
       },
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.ico', 'vite.svg'],
       manifest: {
         name: 'SplitSync - Expense Tracker',
         short_name: 'SplitSync',
         description: 'Modern expense tracking app for couples',
-        theme_color: '#3b82f6',
+        theme_color: '#0ea5e9',
         background_color: '#ffffff',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         start_url: '/',
         scope: '/',
+        id: '/',
         icons: [
           {
             src: 'vite.svg',
@@ -40,7 +56,14 @@ export default defineConfig({
             type: 'image/svg+xml',
             purpose: 'any'
           }
-        ]
+        ],
+        categories: ['finance', 'productivity', 'utilities'],
+        screenshots: [],
+        shortcuts: []
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module'
       }
     })
   ],
