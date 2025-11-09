@@ -95,6 +95,8 @@ export const apiService = {
       splitType: expense.split_type || expense.splitType,
       person1Share: expense.person1_share || expense.person1Share,
       person2Share: expense.person2_share || expense.person2Share,
+      notes: expense.notes || '',
+      comments: expense.comments || [],
       timestamp: expense.created_at ? { seconds: Math.floor(new Date(expense.created_at).getTime() / 1000) } : null,
       createdAt: expense.created_at || expense.createdAt,
       updatedAt: expense.updated_at || expense.updatedAt
@@ -106,7 +108,14 @@ export const apiService = {
     if (response.status === 202) {
       return { queued: true }
     }
-    return response.data
+    // Normalize response
+    const expense = response.data
+    return {
+      ...expense,
+      id: expense.id || expense._id,
+      notes: expense.notes || '',
+      comments: expense.comments || []
+    }
   },
 
   async updateExpense(id, expenseData) {
@@ -225,6 +234,57 @@ export const apiService = {
 
   async disconnectCouple() {
     const response = await api.post('/couples/disconnect')
+    return response.data
+  },
+
+  // Budgets
+  async getBudgets(month, year) {
+    const params = new URLSearchParams()
+    if (month) params.append('month', month)
+    if (year) params.append('year', year)
+    const response = await api.get(`/budgets?${params.toString()}`)
+    return response.data
+  },
+
+  async createOrUpdateBudget(budgetData) {
+    const response = await api.post('/budgets', budgetData)
+    return response.data
+  },
+
+  async updateBudget(id, budgetData) {
+    const response = await api.put(`/budgets/${id}`, budgetData)
+    return response.data
+  },
+
+  async deleteBudget(id) {
+    const response = await api.delete(`/budgets/${id}`)
+    return response.data
+  },
+
+  // Expense Templates
+  async getTemplates() {
+    const response = await api.get('/templates')
+    return response.data
+  },
+
+  async createTemplate(templateData) {
+    const response = await api.post('/templates', templateData)
+    return response.data
+  },
+
+  async updateTemplate(id, templateData) {
+    const response = await api.put(`/templates/${id}`, templateData)
+    return response.data
+  },
+
+  async deleteTemplate(id) {
+    const response = await api.delete(`/templates/${id}`)
+    return response.data
+  },
+
+  // Expense Comments
+  async addComment(expenseId, content) {
+    const response = await api.post(`/expenses/${expenseId}/comments`, { content })
     return response.data
   }
 }

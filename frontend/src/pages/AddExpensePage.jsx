@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useMutation, useQueryClient } from 'react-query'
+import { useMutation, useQueryClient, useQuery } from 'react-query'
 import toast from 'react-hot-toast'
 import { 
   Loader2, Calculator, Percent, DollarSign, FileText, CreditCard, Tag, Users, Plus,
@@ -201,12 +201,41 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
     paidBy: 'person1',
     splitType: 'equal',
     person1Ratio: 50,
-    person1Share: ''
+    person1Share: '',
+    notes: ''
   })
   const [error, setError] = useState(null)
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
   
   const queryClient = useQueryClient()
   const total = parseFloat(formData.totalAmount) || 0
+
+  // Fetch templates
+  const { data: templatesData } = useQuery(['templates'], apiService.getTemplates, {
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+  
+  // Ensure templates is always an array (handle null/undefined responses)
+  const templates = templatesData && Array.isArray(templatesData) ? templatesData : []
+
+  // Load template when selected
+  useEffect(() => {
+    if (selectedTemplate) {
+      const template = templates.find(t => t.id === selectedTemplate || t._id === selectedTemplate)
+      if (template) {
+        setFormData({
+          description: template.description,
+          totalAmount: template.total_amount || template.totalAmount,
+          category: template.category,
+          paidBy: template.paid_by || template.paidBy,
+          splitType: template.split_type || template.splitType,
+          person1Ratio: template.split_type === 'ratio' ? (template.person1_share / (template.person1_share + template.person2_share)) * 100 : 50,
+          person1Share: template.person1_share || '',
+          notes: ''
+        })
+      }
+    }
+  }, [selectedTemplate, templates])
 
   const createExpenseMutation = useMutation(apiService.createExpense, {
     onSuccess: (data) => {
@@ -242,7 +271,8 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
         paid_by: formData.paidBy,
         split_type: formData.splitType,
         person1_share: shares.person1Share,
-        person2_share: shares.person2Share
+        person2_share: shares.person2Share,
+        notes: formData.notes
       }
 
       createExpenseMutation.mutate(expenseData)
@@ -395,6 +425,49 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
           </motion.div>
         )}
 
+        {/* Template Selection */}
+        {templates && templates.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="card p-4 space-y-3"
+          >
+            <label className="text-sm font-medium mb-2 block">
+              Quick Templates
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {templates.map((template) => (
+                <button
+                  key={template.id || template._id}
+                  type="button"
+                  onClick={() => setSelectedTemplate(template.id || template._id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    selectedTemplate === (template.id || template._id)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-accent'
+                  }`}
+                >
+                  {template.name}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Notes Field */}
+        <div>
+          <label htmlFor="notes" className="text-sm font-medium mb-2 block">
+            Notes (Optional)
+          </label>
+          <textarea
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            placeholder="Add any additional notes..."
+            rows={3}
+            className="input w-full resize-none"
+          />
+        </div>
 
         <button
           type="submit"

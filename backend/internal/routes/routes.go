@@ -16,18 +16,20 @@ func SetupRoutes(
 	settingsHandler *handlers.SettingsHandler,
 	reportHandler *handlers.ReportHandler,
 	coupleHandler *handlers.CoupleHandler,
+	budgetHandler *handlers.BudgetHandler,
+	templateHandler *handlers.TemplateHandler,
 ) {
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "message": "SplitSync API is running"})
 	})
 
-	// API v1 routes
+		// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(v1, authHandler)
 		setupProtectedAuthRoutes(v1, authHandler)
-		setupProtectedRoutes(v1, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler)
+		setupProtectedRoutes(v1, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler, budgetHandler, templateHandler)
 	}
 
 	// Legacy API routes (for backward compatibility)
@@ -35,7 +37,7 @@ func SetupRoutes(
 	{
 		setupAuthRoutes(api, authHandler)
 		setupProtectedAuthRoutes(api, authHandler)
-		setupProtectedRoutes(api, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler)
+		setupProtectedRoutes(api, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler, budgetHandler, templateHandler)
 	}
 }
 
@@ -66,6 +68,8 @@ func setupProtectedRoutes(
 	settingsHandler *handlers.SettingsHandler,
 	reportHandler *handlers.ReportHandler,
 	coupleHandler *handlers.CoupleHandler,
+	budgetHandler *handlers.BudgetHandler,
+	templateHandler *handlers.TemplateHandler,
 ) {
 	protected := group.Group("/")
 	protected.Use(middleware.Auth())
@@ -87,6 +91,7 @@ func setupProtectedRoutes(
 			expenses.POST("", expenseHandler.CreateExpense)
 			expenses.PUT("/:id", expenseHandler.UpdateExpense)
 			expenses.DELETE("/:id", expenseHandler.DeleteExpense)
+			expenses.POST("/:id/comments", expenseHandler.AddComment)
 		}
 
 		// Transfer routes
@@ -111,5 +116,24 @@ func setupProtectedRoutes(
 			reports.GET("/monthly/:year/:month", reportHandler.GetMonthlyReport)
 			reports.GET("/categories/:year/:month", reportHandler.GetCategoryReport)
 		}
+
+		// Budget routes
+		budgets := protected.Group("/budgets")
+		{
+			budgets.GET("", budgetHandler.GetBudgets)
+			budgets.POST("", budgetHandler.CreateOrUpdateBudget)
+			budgets.PUT("/:id", budgetHandler.CreateOrUpdateBudget)
+			budgets.DELETE("/:id", budgetHandler.DeleteBudget)
+		}
+
+		// Expense Template routes
+		templates := protected.Group("/templates")
+		{
+			templates.GET("", templateHandler.GetTemplates)
+			templates.POST("", templateHandler.CreateTemplate)
+			templates.PUT("/:id", templateHandler.UpdateTemplate)
+			templates.DELETE("/:id", templateHandler.DeleteTemplate)
+		}
+
 	}
 }

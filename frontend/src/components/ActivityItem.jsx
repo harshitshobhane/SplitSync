@@ -1,23 +1,60 @@
-import React from 'react'
-import { motion } from 'framer-motion'
+import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useMutation, useQueryClient } from 'react-query'
+import toast from 'react-hot-toast'
 import { 
   ArrowRightLeft, ShoppingCart, Home, UtensilsCrossed, Heart, 
-  Zap, Plane, Ticket, Gift, FileText, HeartPulse, Car, MoreHorizontal 
+  Zap, Plane, Ticket, Gift, FileText, HeartPulse, Car, MoreHorizontal,
+  MessageSquare, Send, ChevronDown, ChevronUp, User
 } from 'lucide-react'
 import { CATEGORIES } from '../utils/constants'
 import { formatDateShort, formatCurrency } from '../utils/dateUtils'
+import { apiService } from '../lib/api'
 
 const iconMap = {
   ShoppingCart, Home, UtensilsCrossed, Heart, Zap, Plane, Ticket, 
   Gift, FileText, HeartPulse, Car, MoreHorizontal
 }
 
-const ActivityItem = ({ item, names, currency = 'USD' }) => {
+const ActivityItem = ({ item, names, currency = 'USD', currentUserId }) => {
   const isExpense = item.totalAmount !== undefined
   const isQueued = !!(item.queued || item._queued)
+  const [showComments, setShowComments] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
+  const [newComment, setNewComment] = useState('')
+  const [isAddingComment, setIsAddingComment] = useState(false)
+  
+  const queryClient = useQueryClient()
   
   const category = isExpense ? CATEGORIES[item.category] || CATEGORIES.other : null
   const CategoryIcon = category ? iconMap[category.icon] : null
+  
+  const notes = item.notes || ''
+  const comments = item.comments || []
+  const hasNotes = notes && notes.trim().length > 0
+  const hasComments = comments && comments.length > 0
+  
+  const addCommentMutation = useMutation(
+    (content) => apiService.addComment(item.id || item._id, content),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['expenses'])
+        setNewComment('')
+        setIsAddingComment(false)
+        toast.success('Comment added!')
+      },
+      onError: () => {
+        toast.error('Failed to add comment')
+        setIsAddingComment(false)
+      }
+    }
+  )
+  
+  const handleAddComment = () => {
+    if (!newComment.trim()) return
+    setIsAddingComment(true)
+    addCommentMutation.mutate(newComment.trim())
+  }
 
   return (
     <motion.div 
@@ -183,6 +220,103 @@ const ActivityItem = ({ item, names, currency = 'USD' }) => {
             <p className="text-[11px] text-muted-foreground/70 font-medium tracking-wide">
               {formatDateShort(item.timestamp || (item.created_at ? { seconds: Math.floor(new Date(item.created_at).getTime() / 1000) } : null))}
             </p>
+            
+            {/* Notes */}
+            {isExpense && hasNotes && (
+              <div className="mt-2">
+                <button
+                  onClick={() => setShowNotes(!showNotes)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <FileText className="h-3 w-3" />
+                  <span>Notes</span>
+                  {showNotes ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
+                <AnimatePresence>
+                  {showNotes && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-2 p-2 bg-muted rounded-lg text-xs text-foreground"
+                    >
+                      {notes}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+            
+            {/* Comments */}
+            {isExpense && (
+              <div className="mt-2">
+                <button
+                  onClick={() => setShowComments(!showComments)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <MessageSquare className="h-3 w-3" />
+                  <span>{hasComments ? `${comments.length} comment${comments.length !== 1 ? 's' : ''}` : 'Add comment'}</span>
+                  {showComments ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
+                <AnimatePresence>
+                  {showComments && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-2 space-y-2"
+                    >
+                      {/* Existing Comments */}
+                      {hasComments && (
+                        <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                          {comments.map((comment) => (
+                            <div key={comment.id || comment._id || Math.random()} className="p-2 bg-muted rounded-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-semibold">{comment.user_name || comment.userName || 'User'}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {formatDateShort(comment.created_at ? { seconds: Math.floor(new Date(comment.created_at).getTime() / 1000) } : null)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-foreground">{comment.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Add Comment Form */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAddComment()}
+                          placeholder="Add a comment..."
+                          className="input flex-1 text-xs py-1.5"
+                          disabled={isAddingComment}
+                        />
+                        <button
+                          onClick={handleAddComment}
+                          disabled={!newComment.trim() || isAddingComment}
+                          className="btn btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
+                        >
+                          {isAddingComment ? (
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            >
+                              <Send className="h-3 w-3" />
+                            </motion.div>
+                          ) : (
+                            <Send className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         </div>
       </div>

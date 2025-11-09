@@ -32,8 +32,19 @@ type Expense struct {
 	SplitType    string             `json:"split_type" bson:"split_type"` // "equal", "ratio", "exact"
 	Person1Share float64            `json:"person1_share" bson:"person1_share"`
 	Person2Share float64            `json:"person2_share" bson:"person2_share"`
+	Notes        string             `json:"notes,omitempty" bson:"notes,omitempty"`       // Optional notes
+	Comments     []Comment          `json:"comments,omitempty" bson:"comments,omitempty"` // Optional comments
 	CreatedAt    time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
+}
+
+// Comment represents a comment on an expense
+type Comment struct {
+	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
+	UserName  string             `json:"user_name" bson:"user_name"`
+	Content   string             `json:"content" bson:"content"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 }
 
 // Transfer represents a money transfer between users
@@ -83,6 +94,12 @@ type CreateExpenseRequest struct {
 	SplitType    string  `json:"split_type" binding:"required,oneof=equal ratio exact"`
 	Person1Share float64 `json:"person1_share"`
 	Person2Share float64 `json:"person2_share"`
+	Notes        string  `json:"notes,omitempty"`
+}
+
+// AddCommentRequest represents the request to add a comment to an expense
+type AddCommentRequest struct {
+	Content string `json:"content" binding:"required"`
 }
 
 // CreateTransferRequest represents the request to create a transfer
@@ -220,4 +237,64 @@ type APIResponse struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 	Error   string      `json:"error,omitempty"`
+}
+
+// Budget represents a monthly budget for a category
+type Budget struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	CoupleID     primitive.ObjectID `json:"couple_id" bson:"couple_id"`
+	Category     string             `json:"category" bson:"category"`
+	Amount       float64            `json:"amount" bson:"amount"`
+	Month        int                `json:"month" bson:"month"`                 // 1-12
+	Year         int                `json:"year" bson:"year"`                   // e.g., 2024
+	AlertPercent float64            `json:"alert_percent" bson:"alert_percent"` // Alert when spending reaches this % (default 80)
+	CreatedAt    time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
+}
+
+// BudgetResponse represents budget with spending information
+type BudgetResponse struct {
+	Budget       Budget  `json:"budget"`
+	Spent        float64 `json:"spent"`
+	Remaining    float64 `json:"remaining"`
+	PercentUsed  float64 `json:"percent_used"`
+	AlertReached bool    `json:"alert_reached"`
+}
+
+// CreateBudgetRequest represents the request to create/update a budget
+type CreateBudgetRequest struct {
+	Category     string  `json:"category" binding:"required"`
+	Amount       float64 `json:"amount" binding:"required,min=0.01"`
+	Month        int     `json:"month" binding:"required,min=1,max=12"`
+	Year         int     `json:"year" binding:"required"`
+	AlertPercent float64 `json:"alert_percent,omitempty"` // Optional, default 80
+}
+
+// ExpenseTemplate represents a saved expense template
+type ExpenseTemplate struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`
+	CoupleID     primitive.ObjectID `json:"couple_id,omitempty" bson:"couple_id,omitempty"`
+	Name         string             `json:"name" bson:"name"` // Template name
+	Description  string             `json:"description" bson:"description"`
+	TotalAmount  float64            `json:"total_amount" bson:"total_amount"`
+	Category     string             `json:"category" bson:"category"`
+	PaidBy       string             `json:"paid_by" bson:"paid_by"`
+	SplitType    string             `json:"split_type" bson:"split_type"`
+	Person1Share float64            `json:"person1_share" bson:"person1_share"`
+	Person2Share float64            `json:"person2_share" bson:"person2_share"`
+	CreatedAt    time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
+}
+
+// CreateExpenseTemplateRequest represents the request to create an expense template
+type CreateExpenseTemplateRequest struct {
+	Name         string  `json:"name" binding:"required"`
+	Description  string  `json:"description" binding:"required"`
+	TotalAmount  float64 `json:"total_amount" binding:"required,min=0.01"`
+	Category     string  `json:"category" binding:"required"`
+	PaidBy       string  `json:"paid_by" binding:"required,oneof=person1 person2"`
+	SplitType    string  `json:"split_type" binding:"required,oneof=equal ratio exact"`
+	Person1Share float64 `json:"person1_share"`
+	Person2Share float64 `json:"person2_share"`
 }

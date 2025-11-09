@@ -87,9 +87,11 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(db)
 	reportHandler := handlers.NewReportHandler(db)
 	coupleHandler := handlers.NewCoupleHandler(db)
+	budgetHandler := handlers.NewBudgetHandler(db)
+	templateHandler := handlers.NewTemplateHandler(db)
 
 	// Setup routes
-	routes.SetupRoutes(router, authHandler, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler)
+	routes.SetupRoutes(router, authHandler, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler, budgetHandler, templateHandler)
 
 	// Start server
 	port := cfg.Port

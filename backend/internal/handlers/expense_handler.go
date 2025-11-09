@@ -159,6 +159,8 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 		SplitType:    req.SplitType,
 		Person1Share: req.Person1Share,
 		Person2Share: req.Person2Share,
+		Notes:        req.Notes,
+		Comments:     []models.Comment{},
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -240,6 +242,7 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 			"split_type":    req.SplitType,
 			"person1_share": req.Person1Share,
 			"person2_share": req.Person2Share,
+			"notes":         req.Notes,
 			"updated_at":    time.Now(),
 		},
 	}
@@ -322,4 +325,103 @@ func (h *ExpenseHandler) DeleteExpense(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Expense deleted successfully"})
+}
+
+// AddComment adds a comment to an expense
+func (h *ExpenseHandler) AddComment(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	expenseID := c.Param("id")
+	objectID, err := primitive.ObjectIDFromHex(expenseID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
+		return
+	}
+
+	var req models.AddCommentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	collection := h.db.Collection("expenses")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Get user info
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	usersCollection := h.db.Collection("users")
+	var user models.User
+	if err := usersCollection.FindOne(ctx, bson.M{"_id": userObjectID}).Decode(&user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
+		return
+	}
+
+	// Get user's couple ID
+	coupleID, err := h.getCoupleID(ctx, userObjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch couple information"})
+		return
+	}
+
+	// Build query: expense must belong to user or couple
+	query := bson.M{
+		"_id": objectID,
+		"$or": []bson.M{
+			{"user_id": userObjectID},
+			{"user_id": userID},
+		},
+	}
+
+	if !coupleID.IsZero() {
+		query = bson.M{
+			"_id": objectID,
+			"$or": []bson.M{
+				{"user_id": userObjectID},
+				{"user_id": userID},
+				{"couple_id": coupleID},
+			},
+		}
+	}
+
+	// Create comment
+	comment := models.Comment{
+		ID:        primitive.NewObjectID(),
+		UserID:    userObjectID,
+		UserName:  user.Name,
+		Content:   req.Content,
+		CreatedAt: time.Now(),
+	}
+
+	// Add comment to expense
+	update := bson.M{
+		"$push": bson.M{
+			"comments": comment,
+		},
+		"$set": bson.M{
+			"updated_at": time.Now(),
+		},
+	}
+
+	result, err := collection.UpdateOne(ctx, query, update)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add comment"})
+		return
+	}
+
+	if result.MatchedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, comment)
 }

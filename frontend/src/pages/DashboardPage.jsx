@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { useMutation, useQueryClient } from 'react-query'
+import { useMutation, useQueryClient, useQuery } from 'react-query'
 import toast from 'react-hot-toast'
-import { TrendingUp, TrendingDown, Users, Wallet, Calendar, Bell, Share2, Search } from 'lucide-react'
+import { TrendingUp, TrendingDown, Users, Wallet, Calendar, Bell, Share2, Search, Target, AlertCircle } from 'lucide-react'
 import { apiService } from '../lib/api'
 import { CATEGORIES } from '../utils/constants'
 import SearchModal from '../components/SearchModal'
@@ -13,6 +13,22 @@ import { share } from '../utils/storage'
 const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQuery, setSearchQuery, showSearch, setShowSearch, currency }) => {
   const queryClient = useQueryClient()
   const { person1Net, person2Net, whoOwesWho, amountOwed, person1Status, person2Status } = balance
+
+  // Fetch budgets for current month
+  const now = new Date()
+  const currentMonth = now.getMonth() + 1
+  const currentYear = now.getFullYear()
+  
+  const { data: budgetsData } = useQuery(
+    ['budgets', currentMonth, currentYear],
+    () => apiService.getBudgets(currentMonth, currentYear),
+    {
+      staleTime: 2 * 60 * 1000, // 2 minutes
+    }
+  )
+  
+  // Ensure budgets is always an array (handle null/undefined responses)
+  const budgets = Array.isArray(budgetsData) ? budgetsData : []
 
   const recentActivity = useMemo(() => {
     const items = [...expenses, ...transfers]
@@ -51,7 +67,8 @@ const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQue
         </div>
       </motion.div>
 
-      {/* Person Cards */}
+      {/* Person Cards - Only show when there's an outstanding balance */}
+      {amountOwed > 0 && (
       <div className="grid grid-cols-2 gap-3">
         <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="card-premium p-2.5 sm:p-4">
           <div className="flex items-center justify-between mb-1.5">
@@ -75,6 +92,7 @@ const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQue
           <p className="text-[10px] sm:text-xs text-muted-foreground">{person2Net >= 0 ? 'Creditor' : 'Debtor'}</p>
         </motion.div>
       </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -96,6 +114,88 @@ const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQue
           </motion.div>
         ))}
       </div>
+
+      {/* Budget Progress */}
+      {budgets.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Monthly Budgets
+            </h2>
+            <button 
+              onClick={() => setPage('settings')} 
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Manage
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {budgets.slice(0, 3).map((budget) => {
+              const category = CATEGORIES[budget.budget?.category || budget.category]
+              const spent = budget.spent || 0
+              const amount = budget.budget?.amount || budget.amount || 0
+              const percentUsed = amount > 0 ? (spent / amount) * 100 : 0
+              const remaining = amount - spent
+              const alertReached = budget.alert_reached || percentUsed >= (budget.budget?.alert_percent || budget.alert_percent || 80)
+              
+              return (
+                <motion.div
+                  key={budget.budget?.id || budget.id || budget.budget?._id || budget._id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card-premium p-3 sm:p-4"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {category && (
+                        <div 
+                          className="p-1.5 rounded-lg"
+                          style={{ backgroundColor: `${category.color}15` }}
+                        >
+                          <Target className="h-3.5 w-3.5" style={{ color: category.color }} />
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold">{category?.label || budget.budget?.category || budget.category}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatCurrency(spent, currency)} / {formatCurrency(amount, currency)}
+                        </p>
+                      </div>
+                    </div>
+                    {alertReached && (
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                    )}
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 mb-1">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        percentUsed >= 100 ? 'bg-red-600' :
+                        alertReached ? 'bg-amber-600' : 'bg-primary'
+                      }`}
+                      style={{ width: `${Math.min(percentUsed, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={remaining < 0 ? 'text-red-600 font-semibold' : 'text-muted-foreground'}>
+                      {remaining >= 0 ? `${formatCurrency(remaining, currency)} remaining` : `${formatCurrency(Math.abs(remaining), currency)} over`}
+                    </span>
+                    <span className="text-muted-foreground">{percentUsed.toFixed(0)}%</span>
+                  </div>
+                </motion.div>
+              )
+            })}
+            {budgets.length > 3 && (
+              <button
+                onClick={() => setPage('settings')}
+                className="w-full text-xs text-muted-foreground hover:text-foreground text-center py-2"
+              >
+                View all {budgets.length} budgets →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"splitsync-backend/internal/models"
@@ -33,7 +34,21 @@ func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 	month := c.Param("month")
 
 	// Parse year and month
-	reportDate := time.Date(parseInt(year), time.Month(parseInt(month)), 1, 0, 0, 0, 0, time.UTC)
+	yearInt, err := strconv.Atoi(year)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid year parameter"})
+		return
+	}
+	monthInt, err := strconv.Atoi(month)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid month parameter"})
+		return
+	}
+	if monthInt < 1 || monthInt > 12 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Month must be between 1 and 12"})
+		return
+	}
+	reportDate := time.Date(yearInt, time.Month(monthInt), 1, 0, 0, 0, 0, time.UTC)
 	nextMonth := reportDate.AddDate(0, 1, 0)
 
 	collection := h.db.Collection("expenses")
@@ -206,7 +221,21 @@ func (h *ReportHandler) GetCategoryReport(c *gin.Context) {
 	month := c.Param("month")
 
 	// Parse year and month
-	reportDate := time.Date(parseInt(year), time.Month(parseInt(month)), 1, 0, 0, 0, 0, time.UTC)
+	yearInt, err := strconv.Atoi(year)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid year parameter"})
+		return
+	}
+	monthInt, err := strconv.Atoi(month)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid month parameter"})
+		return
+	}
+	if monthInt < 1 || monthInt > 12 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Month must be between 1 and 12"})
+		return
+	}
+	reportDate := time.Date(yearInt, time.Month(monthInt), 1, 0, 0, 0, 0, time.UTC)
 	nextMonth := reportDate.AddDate(0, 1, 0)
 
 	collection := h.db.Collection("expenses")
@@ -331,14 +360,4 @@ func (h *ReportHandler) getCoupleID(ctx context.Context, userObjectID primitive.
 	}
 
 	return couple.ID, nil
-}
-
-// Helper function to parse string to int
-func parseInt(s string) int {
-	// Simple implementation - in production, use strconv.Atoi with error handling
-	if s == "" {
-		return 0
-	}
-	// This is a simplified version - implement proper parsing
-	return 2024 // Default year for now
 }
