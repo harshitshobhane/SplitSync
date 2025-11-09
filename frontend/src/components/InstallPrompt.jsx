@@ -18,73 +18,85 @@ const InstallPrompt = () => {
       return
     }
 
-    // Check if user has dismissed the prompt before (using localStorage)
-    const dismissedPrompt = localStorage.getItem('pwa-install-dismissed')
-    const dismissedTime = dismissedPrompt ? parseInt(dismissedPrompt, 10) : 0
-    const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24)
+    // Check if user has dismissed the prompt in this session (using sessionStorage)
+    const dismissedThisSession = sessionStorage.getItem('pwa-install-dismissed-session')
+    
+    // Also check localStorage for permanent dismissal (optional - can be removed if you want it to show every time)
+    const dismissedPermanent = localStorage.getItem('pwa-install-dismissed')
+    const dismissedTime = dismissedPermanent ? parseInt(dismissedPermanent, 10) : 0
+    const hoursSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60)
     
     // Detect if mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     
-    // Show prompt if not dismissed or dismissed more than 7 days ago
-    if (!dismissedPrompt || daysSinceDismissed > 7) {
-      let hasDeferredPrompt = false
-      
+    // Show prompt if not dismissed this session and (not permanently dismissed or dismissed more than 24 hours ago)
+    if (!dismissedThisSession && (!dismissedPermanent || hoursSinceDismissed > 24)) {
       // Listen for beforeinstallprompt event (Android/Chrome)
       const handler = (e) => {
         e.preventDefault()
         setDeferredPrompt(e)
-        hasDeferredPrompt = true
         // Show prompt when beforeinstallprompt fires
         setShowPrompt(true)
       }
       
       window.addEventListener('beforeinstallprompt', handler)
       
-      // For mobile devices, show after a short delay (even without beforeinstallprompt)
-      // This covers iOS and other browsers
-      if (isMobile) {
-        // Show after 1 second for mobile devices
-        const timer = setTimeout(() => {
-          setShowPrompt(true)
-        }, 1000)
-        
-        return () => {
-          window.removeEventListener('beforeinstallprompt', handler)
-          clearTimeout(timer)
-        }
-      } else {
-        // For desktop, show after a delay to allow beforeinstallprompt to fire
-        // If beforeinstallprompt fires, it will show immediately
-        // Otherwise, show after 2 seconds anyway (for browsers that support PWA but don't fire the event)
-        const timer = setTimeout(() => {
-          // Show prompt even without beforeinstallprompt for desktop
-          setShowPrompt(true)
-        }, 2000)
-        
-        return () => {
-          window.removeEventListener('beforeinstallprompt', handler)
-          clearTimeout(timer)
-        }
+      // Show prompt after a very short delay for all devices
+      // Mobile: 0.5 seconds, Desktop: 1 second
+      const delay = isMobile ? 500 : 1000
+      
+      const timer = setTimeout(() => {
+        setShowPrompt(true)
+      }, delay)
+      
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handler)
+        clearTimeout(timer)
       }
+    } else {
+      // For debugging - log why prompt is not showing
+      console.log('Install prompt not showing:', {
+        dismissedThisSession,
+        dismissedPermanent,
+        hoursSinceDismissed,
+        isMobile
+      })
     }
   }, [])
 
   const handleInstall = async () => {
     if (deferredPrompt) {
-      // Show the install prompt
-      deferredPrompt.prompt()
-      
-      // Wait for the user to respond
-      const { outcome } = await deferredPrompt.userChoice
-      
-      if (outcome === 'accepted') {
+      try {
+        // Show the install prompt
+        deferredPrompt.prompt()
+        
+        // Wait for the user to respond
+        const { outcome } = await deferredPrompt.userChoice
+        
+        if (outcome === 'accepted') {
+          setShowPrompt(false)
+          setIsInstalled(true)
+          localStorage.setItem('pwa-install-dismissed', Date.now().toString())
+        } else {
+          // User dismissed the native prompt
+          setShowPrompt(false)
+          sessionStorage.setItem('pwa-install-dismissed-session', 'true')
+        }
+        
+        // Clear the deferred prompt
+        setDeferredPrompt(null)
+      } catch (error) {
+        console.error('Error showing install prompt:', error)
+        // Fallback for iOS or devices without beforeinstallprompt
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        if (isIOS) {
+          alert('To install: Tap the Share button and select "Add to Home Screen"')
+        } else {
+          alert('To install: Look for the install icon in your browser\'s address bar')
+        }
         setShowPrompt(false)
-        setIsInstalled(true)
+        sessionStorage.setItem('pwa-install-dismissed-session', 'true')
       }
-      
-      // Clear the deferred prompt
-      setDeferredPrompt(null)
     } else {
       // For iOS or devices without beforeinstallprompt
       // Show instructions
@@ -94,12 +106,16 @@ const InstallPrompt = () => {
       } else {
         alert('To install: Look for the install icon in your browser\'s address bar')
       }
+      setShowPrompt(false)
+      sessionStorage.setItem('pwa-install-dismissed-session', 'true')
     }
   }
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    // Store dismissal time in localStorage
+    // Store dismissal in sessionStorage (only for this session)
+    sessionStorage.setItem('pwa-install-dismissed-session', 'true')
+    // Also store in localStorage (for 24 hours)
     localStorage.setItem('pwa-install-dismissed', Date.now().toString())
   }
 
@@ -138,7 +154,6 @@ const InstallPrompt = () => {
               >
                 <X className="h-5 w-5 text-muted-foreground" />
               </button>
-
 
               {/* Content */}
               <div className="text-center mb-6">
@@ -199,4 +214,3 @@ const InstallPrompt = () => {
 }
 
 export default InstallPrompt
-
