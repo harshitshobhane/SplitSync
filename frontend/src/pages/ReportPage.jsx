@@ -10,9 +10,9 @@ import ActivityItem from '../components/ActivityItem'
 import { formatCurrency } from '../utils/dateUtils'
 import { jsPDF } from 'jspdf'
 
-const ReportPage = ({ expenses, names, currency, setPage }) => {
+const ReportPage = ({ expenses, transfers = [], names, currency, setPage }) => {
   const now = new Date()
-  const { totalSpent, person1Paid, person2Paid, monthlyExpenses } = calculateMonthlyTotals(expenses, [])
+  const { totalSpent, person1Paid, person2Paid, monthlyExpenses } = calculateMonthlyTotals(expenses, transfers)
   const categoryTotals = calculateCategoryTotals(monthlyExpenses)
   const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])
 

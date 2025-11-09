@@ -150,13 +150,67 @@ export const calculateMonthlyTotals = (expenses, transfers) => {
     return expenseDate >= firstDayOfMonth
   })
   
-  const totalSpent = monthlyExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0)
-  const person1Paid = monthlyExpenses
-    .filter(e => e.paidBy === 'person1')
-    .reduce((sum, e) => sum + (e.totalAmount || 0), 0)
-  const person2Paid = monthlyExpenses
-    .filter(e => e.paidBy === 'person2')
-    .reduce((sum, e) => sum + (e.totalAmount || 0), 0)
+  // Filter transfers by date
+  const monthlyTransfers = transfers.filter(t => {
+    if (!t) return false
+    
+    let transferDate = null
+    
+    if (t.timestamp && typeof t.timestamp === 'object' && t.timestamp.seconds) {
+      transferDate = new Date(t.timestamp.seconds * 1000)
+    } else if (t.timestamp && typeof t.timestamp === 'number') {
+      transferDate = new Date(t.timestamp)
+    } else if (t.created_at) {
+      transferDate = new Date(t.created_at)
+    } else if (t.createdAt) {
+      transferDate = new Date(t.createdAt)
+    } else if (t.date) {
+      transferDate = new Date(t.date)
+    } else {
+      return true
+    }
+    
+    if (!transferDate || isNaN(transferDate.getTime())) {
+      return true
+    }
+    
+    return transferDate >= firstDayOfMonth
+  })
+  
+  const totalSpent = monthlyExpenses.reduce((sum, e) => sum + (parseFloat(e.totalAmount) || parseFloat(e.total_amount) || 0), 0)
+  
+  // Calculate "Paid" amounts for monthly report
+  // Only record expenses (not transfers)
+  // Show each person's share they contributed (not what they physically paid)
+  // Example: If Harshit paid ₹1000 for expense split 50-50, show Harshit: ₹500, Priya: ₹500
+  
+  let person1Paid = 0
+  let person2Paid = 0
+  
+  // Calculate from expenses only - sum up each person's share
+  monthlyExpenses.forEach(expense => {
+    const person1Share = parseFloat(expense.person1Share) || parseFloat(expense.person1_share) || 0
+    const person2Share = parseFloat(expense.person2Share) || parseFloat(expense.person2_share) || 0
+    
+    // Add each person's share (what they contributed/owe)
+    person1Paid += person1Share
+    person2Paid += person2Share
+  })
+  
+  // Ensure non-negative values
+  person1Paid = Math.max(0, person1Paid)
+  person2Paid = Math.max(0, person2Paid)
+  
+  // Validation: The sum should equal totalSpent (all expenses are split between the two people)
+  const sumPaid = person1Paid + person2Paid
+  
+  // If there's a discrepancy due to rounding or calculation errors, normalize
+  if (totalSpent > 0 && Math.abs(sumPaid - totalSpent) > 0.01) {
+    // Normalize to ensure person1Paid + person2Paid = totalSpent
+    const ratio = sumPaid > 0 ? totalSpent / sumPaid : 1
+    person1Paid = person1Paid * ratio
+    person2Paid = person2Paid * ratio
+  }
   
   return { totalSpent, person1Paid, person2Paid, monthlyExpenses }
 }

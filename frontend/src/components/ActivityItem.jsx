@@ -99,10 +99,7 @@ const ActivityItem = ({ item, names, currency = 'USD' }) => {
                 </motion.span>
                 <span className="text-[10px] text-muted-foreground/70">•</span>
                 <span className="text-xs text-muted-foreground font-medium">
-                  {isExpense
-                    ? `${item.paidBy === 'person1' ? names.person1Name : names.person2Name} paid`
-                    : `${item.fromUser === 'person1' ? names.person1Name : names.person2Name} → ${item.toUser === 'person1' ? names.person1Name : names.person2Name}`
-                  }
+                  {`${item.paidBy === 'person1' ? names.person1Name : names.person2Name} paid`}
                 </span>
               </div>
             )}
@@ -112,6 +109,73 @@ const ActivityItem = ({ item, names, currency = 'USD' }) => {
                 <span className="text-xs text-muted-foreground font-medium">
                   {`${item.fromUser === 'person1' ? names.person1Name : names.person2Name} → ${item.toUser === 'person1' ? names.person1Name : names.person2Name}`}
                 </span>
+              </div>
+            )}
+
+            {/* Split Information for Expenses */}
+            {isExpense && (
+              <div className="flex flex-col gap-1">
+                {(() => {
+                  let person1Share = parseFloat(item.person1Share) || parseFloat(item.person1_share) || 0
+                  let person2Share = parseFloat(item.person2Share) || parseFloat(item.person2_share) || 0
+                  const totalAmount = parseFloat(item.totalAmount) || parseFloat(item.total_amount) || 0
+                  
+                  if (totalAmount > 0) {
+                    // Validate and fix shares if they don't add up correctly
+                    const sumShares = person1Share + person2Share
+                    
+                    // If shares don't match total, recalculate based on split type
+                    if (Math.abs(sumShares - totalAmount) > 0.01) {
+                      const splitType = item.splitType || item.split_type || 'equal'
+                      
+                      if (splitType === 'equal') {
+                        // Equal split: 50/50
+                        person1Share = totalAmount / 2
+                        person2Share = totalAmount / 2
+                      } else if (splitType === 'ratio') {
+                        // Ratio split: use stored ratio or default to 50/50
+                        const person1Ratio = parseFloat(item.person1Ratio) || parseFloat(item.person1_ratio) || 50
+                        person1Share = totalAmount * (person1Ratio / 100)
+                        person2Share = totalAmount - person1Share
+                      } else {
+                        // Exact split: normalize the existing shares
+                        if (sumShares > 0) {
+                          const ratio = totalAmount / sumShares
+                          person1Share = person1Share * ratio
+                          person2Share = person2Share * ratio
+                        } else {
+                          // Fallback to equal split
+                          person1Share = totalAmount / 2
+                          person2Share = totalAmount / 2
+                        }
+                      }
+                    }
+                    
+                    const person1Percent = ((person1Share / totalAmount) * 100).toFixed(0)
+                    const person2Percent = ((person2Share / totalAmount) * 100).toFixed(0)
+                    
+                    // Show split as percentage if it's close to 50/50, otherwise show percentages
+                    const isEqualSplit = Math.abs(person1Percent - person2Percent) < 1
+                    
+                    return (
+                      <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                        <span className="text-muted-foreground font-medium">Split:</span>
+                        {isEqualSplit ? (
+                          <span className="font-semibold text-foreground/90">50% / 50%</span>
+                        ) : (
+                          <span className="font-semibold text-foreground/90">
+                            {person1Percent}% / {person2Percent}%
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground/60">•</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {names.person1Name}: {formatCurrency(person1Share, currency)} • {names.person2Name}: {formatCurrency(person2Share, currency)}
+                        </span>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             )}
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -39,16 +40,48 @@ func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Get expenses for the month
-	filter := bson.M{
-		"user_id": userID,
+	// Convert userID to ObjectID for querying
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Get user's couple ID if exists
+	coupleID, err := h.getCoupleID(ctx, userObjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch couple information"})
+		return
+	}
+
+	// Build query: expenses belonging to user OR couple
+	expenseFilter := bson.M{
+		"$or": []bson.M{
+			{"user_id": userObjectID},
+			{"user_id": userID},
+		},
 		"created_at": bson.M{
 			"$gte": reportDate,
 			"$lt":  nextMonth,
 		},
 	}
 
-	cursor, err := collection.Find(ctx, filter)
+	// If user has a couple, include couple expenses
+	if !coupleID.IsZero() {
+		expenseFilter = bson.M{
+			"$or": []bson.M{
+				{"user_id": userObjectID},
+				{"user_id": userID},
+				{"couple_id": coupleID},
+			},
+			"created_at": bson.M{
+				"$gte": reportDate,
+				"$lt":  nextMonth,
+			},
+		}
+	}
+
+	cursor, err := collection.Find(ctx, expenseFilter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return
@@ -62,8 +95,34 @@ func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 	}
 
 	// Get transfers for the month
+	transferFilter := bson.M{
+		"$or": []bson.M{
+			{"user_id": userObjectID},
+			{"user_id": userID},
+		},
+		"created_at": bson.M{
+			"$gte": reportDate,
+			"$lt":  nextMonth,
+		},
+	}
+
+	// If user has a couple, include couple transfers
+	if !coupleID.IsZero() {
+		transferFilter = bson.M{
+			"$or": []bson.M{
+				{"user_id": userObjectID},
+				{"user_id": userID},
+				{"couple_id": coupleID},
+			},
+			"created_at": bson.M{
+				"$gte": reportDate,
+				"$lt":  nextMonth,
+			},
+		}
+	}
+
 	transferCollection := h.db.Collection("transfers")
-	transferCursor, err := transferCollection.Find(ctx, filter)
+	transferCursor, err := transferCollection.Find(ctx, transferFilter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch transfers"})
 		return
@@ -82,14 +141,41 @@ func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 	person2Paid := 0.0
 	categoryTotals := make(map[string]float64)
 
+	// Calculate "Paid" amounts for monthly report
+	// Only record expenses (not transfers)
+	// Show each person's share they contributed (not what they physically paid)
+	// Example: If Harshit paid ₹1000 for expense split 50-50, show Harshit: ₹500, Priya: ₹500
+
+	// Calculate from expenses only - sum up each person's share
 	for _, expense := range expenses {
 		totalSpent += expense.TotalAmount
-		if expense.PaidBy == "person1" {
-			person1Paid += expense.TotalAmount
-		} else {
-			person2Paid += expense.TotalAmount
-		}
+		
+		// Add each person's share (what they contributed/owe)
+		person1Paid += expense.Person1Share
+		person2Paid += expense.Person2Share
+		
 		categoryTotals[expense.Category] += expense.TotalAmount
+	}
+	
+	// Ensure non-negative values
+	if person1Paid < 0 {
+		person1Paid = 0
+	}
+	if person2Paid < 0 {
+		person2Paid = 0
+	}
+	
+	// Validation: The sum should equal totalSpent (all expenses are split between the two people)
+	sumPaid := person1Paid + person2Paid
+	
+	// If there's a discrepancy due to rounding or calculation errors, normalize
+	if totalSpent > 0 && (sumPaid-totalSpent > 0.01 || sumPaid-totalSpent < -0.01) {
+		// Normalize to ensure person1Paid + person2Paid = totalSpent
+		ratio := sumPaid / totalSpent
+		if ratio > 0 {
+			person1Paid = person1Paid / ratio
+			person2Paid = person2Paid / ratio
+		}
 	}
 
 	// Calculate balance
@@ -223,6 +309,28 @@ func (h *ReportHandler) calculateBalance(expenses []models.Expense, transfers []
 		Person1Status: person1Status,
 		Person2Status: person2Status,
 	}
+}
+
+// getCoupleID retrieves the user's active couple ID if exists
+func (h *ReportHandler) getCoupleID(ctx context.Context, userObjectID primitive.ObjectID) (primitive.ObjectID, error) {
+	couplesCollection := h.db.Collection("couples")
+	var couple models.Couple
+	err := couplesCollection.FindOne(ctx, bson.M{
+		"$or": []bson.M{
+			{"user1_id": userObjectID},
+			{"user2_id": userObjectID},
+		},
+		"status": "active",
+	}).Decode(&couple)
+
+	if err == mongo.ErrNoDocuments {
+		return primitive.NilObjectID, nil
+	}
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+
+	return couple.ID, nil
 }
 
 // Helper function to parse string to int
