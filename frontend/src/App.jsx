@@ -369,29 +369,33 @@ export default function App() {
   // If user is not authenticated, show auth flow
   if (!isAuthenticated) {
     return (
-      <Suspense fallback={<LoadingSpinner />}>
-        {authView === null && (
-          <LandingPage onSelectMode={setAuthView} />
-        )}
-        {authView === 'login' && (
-          <LoginPage
-            onBack={() => setAuthView(null)}
-            onSuccess={() => setAuthView(null)}
-          />
-        )}
-        {authView === 'signup' && (
-          <SignupPage
-            onBack={() => setAuthView(null)}
-            onSuccess={(email) => {
-              if (email) {
-                setAuthView('verify')
-              } else {
-                setAuthView(null)
-              }
-            }}
-          />
-        )}
-      </Suspense>
+      <>
+        <Suspense fallback={<LoadingSpinner />}>
+          {authView === null && (
+            <LandingPage onSelectMode={setAuthView} />
+          )}
+          {authView === 'login' && (
+            <LoginPage
+              onBack={() => setAuthView(null)}
+              onSuccess={() => setAuthView(null)}
+            />
+          )}
+          {authView === 'signup' && (
+            <SignupPage
+              onBack={() => setAuthView(null)}
+              onSuccess={(email) => {
+                if (email) {
+                  setAuthView('verify')
+                } else {
+                  setAuthView(null)
+                }
+              }}
+            />
+          )}
+        </Suspense>
+        {/* PWA Install Prompt - Show on landing page and all pages */}
+        <InstallPrompt />
+      </>
     )
   }
 
@@ -496,8 +500,8 @@ export default function App() {
         </div>
       )}
       
-      {/* PWA Install Prompt - Only show when NOT authenticated */}
-      {!isAuthenticated && <InstallPrompt />}
+      {/* PWA Install Prompt - Show for all users at app start */}
+      <InstallPrompt />
     </div>
   )
 }

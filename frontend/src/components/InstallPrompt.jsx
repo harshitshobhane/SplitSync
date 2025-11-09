@@ -28,15 +28,14 @@ const InstallPrompt = () => {
       const handler = (e) => {
         e.preventDefault()
         setDeferredPrompt(e)
-        setShowPrompt(true)
       }
       
       window.addEventListener('beforeinstallprompt', handler)
       
-      // Show after 1.5 seconds for all devices
+      // Show immediately on app start (sooner)
       const timer = setTimeout(() => {
         setShowPrompt(true)
-      }, 1500)
+      }, 500) // Reduced from 1500ms to 500ms for sooner display
       
       return () => {
         window.removeEventListener('beforeinstallprompt', handler)
@@ -63,9 +62,11 @@ const InstallPrompt = () => {
         console.error('Install error:', error)
         handleDismiss()
       }
+    } else if (isIOS) {
+      // iOS - instructions are already shown, keep modal open so user can follow them
+      // Don't dismiss, let user see the instructions
     } else {
-      // iOS or other browsers - show instructions
-      handleDismiss()
+      // Other browsers - instructions are shown, keep modal open
     }
   }
 
@@ -107,12 +108,13 @@ const InstallPrompt = () => {
 
             {/* Content */}
             <div className="text-center mb-6">
-              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <Smartphone className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-2xl font-bold text-foreground mb-2">
+              
+              <h3 className="text-2xl font-bold text-foreground mb-1">
                 Install SplitSync
               </h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Expense Tracker
+              </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Add SplitSync to your home screen for quick access and an app-like experience.
               </p>
@@ -142,26 +144,16 @@ const InstallPrompt = () => {
 
             {/* Actions */}
             <div className="flex flex-col gap-2.5">
-              {deferredPrompt ? (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleInstall}
-                  className="w-full py-3.5 rounded-xl bg-foreground text-background font-semibold text-sm flex items-center justify-center gap-2 transition-all border border-border/20"
-                >
-                  <Download className="h-5 w-5" />
-                  Install Now
-                </motion.button>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleDismiss}
-                  className="w-full py-3.5 rounded-xl bg-foreground text-background font-semibold text-sm flex items-center justify-center gap-2 transition-all border border-border/20"
-                >
-                  Got it
-                </motion.button>
-              )}
+              {/* Always show Install button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleInstall}
+                className="w-full py-3.5 rounded-xl bg-foreground text-background font-semibold text-sm flex items-center justify-center gap-2 transition-all border border-border/20 shadow-lg"
+              >
+                <Download className="h-5 w-5" />
+                Install Now
+              </motion.button>
               <button
                 onClick={handleDismiss}
                 className="w-full py-2.5 rounded-xl text-muted-foreground hover:text-foreground font-medium text-sm transition-colors"

@@ -1,79 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Download } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 export default function LandingPage({ onSelectMode }) {
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
-  const [isIOS, setIsIOS] = useState(false)
-  const [isInstalled, setIsInstalled] = useState(false)
-
-  useEffect(() => {
-    // Check if already installed
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        window.navigator.standalone
-    
-    if (isStandalone) {
-      setIsInstalled(true)
-      return
-    }
-
-    // Detect iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    setIsIOS(iOS)
-
-    // Listen for beforeinstallprompt event (Android/Chrome)
-    const handler = (e) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
-    }
-    
-    window.addEventListener('beforeinstallprompt', handler)
-    
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler)
-    }
-  }, [])
-
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      // Android/Chrome - use native prompt
-      try {
-        deferredPrompt.prompt()
-        const { outcome } = await deferredPrompt.userChoice
-        
-        if (outcome === 'accepted') {
-          setIsInstalled(true)
-        }
-        
-        setDeferredPrompt(null)
-      } catch (error) {
-        console.error('Install error:', error)
-      }
-    } else if (isIOS) {
-      // iOS - show instructions
-      alert('To install: Tap Share (□↑) → "Add to Home Screen"')
-    } else {
-      // Other browsers
-      alert('To install: Look for the install icon in your browser\'s address bar')
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Install Button - Top Right (Mobile Only) */}
-      {!isInstalled && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
-          whileHover={{ scale: 1.15 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={handleInstall}
-          className="fixed top-4 right-4 md:hidden z-50 p-2 flex items-center justify-center group"
-        >
-          <Download className="h-7 w-7 text-foreground/80 group-hover:text-foreground group-hover:scale-110 transition-all duration-300" />
-        </motion.button>
-      )}
 
       {/* Hero Section - Simple Centered Layout */}
       <div className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20">

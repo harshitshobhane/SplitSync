@@ -6,9 +6,6 @@ import { apiService } from '../lib/api'
 
 export default function ProfilePage({ onBack, onLogout }) {
   const { user, logout } = useAuthContext()
-  const [installPrompt, setInstallPrompt] = useState(null)
-  const [canInstall, setCanInstall] = useState(false)
-  const [isInstalled, setIsInstalled] = useState(false)
   const [upi, setUpi] = useState(user?.upi_id || '')
   const upiUri = upi ? `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(user?.name || 'SplitSync User')}&cu=INR` : ''
   const [showQr, setShowQr] = useState(false)
@@ -16,27 +13,6 @@ export default function ProfilePage({ onBack, onLogout }) {
   const handleLogout = async () => {
     await logout()
     onLogout()
-  }
-
-  useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault()
-      setInstallPrompt(e)
-      setCanInstall(true)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    // Detect installed/standalone
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
-    setIsInstalled(!!standalone)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
-  const handleInstall = async () => {
-    if (!installPrompt) return
-    installPrompt.prompt()
-    const { outcome } = await installPrompt.userChoice
-    if (outcome) setCanInstall(false)
-    setInstallPrompt(null)
   }
 
   const handleSaveUpi = async () => {
