@@ -87,6 +87,13 @@ func (h *AuthHandler) VerifyFirebaseToken(c *gin.Context) {
 		user.ProfilePicture = req.ProfilePicture
 	}
 
+	// Check if there's a pending invitation for this user's email
+	// This allows auto-acceptance when user signs up/login via invitation link
+	invitationToken := c.GetHeader("X-Invitation-Token") // Token from URL/localStorage
+	if invitationToken != "" {
+		h.handleInvitationAutoAccept(ctx, user.ID, user.Email, invitationToken)
+	}
+
 	// Generate JWT token
 	token, err := utils.GenerateToken(user.ID.Hex())
 	if err != nil {
@@ -97,6 +104,78 @@ func (h *AuthHandler) VerifyFirebaseToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
 		"user":  user,
+	})
+}
+
+// handleInvitationAutoAccept automatically accepts an invitation when user signs up/logs in via invitation link
+func (h *AuthHandler) handleInvitationAutoAccept(ctx context.Context, userID primitive.ObjectID, userEmail string, invitationToken string) {
+	invitationsCollection := h.db.Collection("invitations")
+
+	// Find invitation by token
+	var invitation models.Invitation
+	err := invitationsCollection.FindOne(ctx, bson.M{"token": invitationToken}).Decode(&invitation)
+	if err != nil {
+		// Invitation not found or already processed - silently ignore
+		return
+	}
+
+	// Check if invitation is expired
+	if time.Now().After(invitation.ExpiresAt) {
+		invitationsCollection.UpdateOne(ctx, bson.M{"_id": invitation.ID}, bson.M{
+			"$set": bson.M{"status": "expired", "updated_at": time.Now()},
+		})
+		return
+	}
+
+	// Check if invitation is for this user's email
+	if invitation.InviteeEmail != userEmail {
+		return // Not the right user
+	}
+
+	// Check if invitation is still pending
+	if invitation.Status != "pending" {
+		return // Already processed
+	}
+
+	// Check if user already has a couple
+	couplesCollection := h.db.Collection("couples")
+	var existingCouple models.Couple
+	err = couplesCollection.FindOne(ctx, bson.M{
+		"$or": []bson.M{
+			{"user1_id": userID},
+			{"user2_id": userID},
+		},
+		"status": "active",
+	}).Decode(&existingCouple)
+
+	if err == nil {
+		// User already has a couple - don't auto-accept
+		return
+	}
+
+	// Get the couple
+	var couple models.Couple
+	err = couplesCollection.FindOne(ctx, bson.M{"_id": invitation.CoupleID}).Decode(&couple)
+	if err != nil {
+		return
+	}
+
+	// Auto-accept: Update couple to active and set user2_id
+	couple.User2ID = userID
+	couple.Status = "active"
+	couple.UpdatedAt = time.Now()
+
+	couplesCollection.UpdateOne(ctx, bson.M{"_id": couple.ID}, bson.M{
+		"$set": bson.M{
+			"user2_id":   userID,
+			"status":     "active",
+			"updated_at": time.Now(),
+		},
+	})
+
+	// Update invitation status to accepted
+	invitationsCollection.UpdateOne(ctx, bson.M{"_id": invitation.ID}, bson.M{
+		"$set": bson.M{"status": "accepted", "updated_at": time.Now()},
 	})
 }
 
@@ -131,4 +210,55 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 // Logout handles user logout requests
 func (h *AuthHandler) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+// UpdateUPI updates the user's UPI ID
+func (h *AuthHandler) UpdateUPI(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var req models.UpdateUPIRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Basic UPI format validation
+	// pattern: name@provider (allowing dots and dashes in name)
+	valid := false
+	if len(req.UPIID) >= 5 && len(req.UPIID) <= 100 {
+		for i := 0; i < len(req.UPIID); i++ {
+			if req.UPIID[i] == '@' {
+				valid = true
+				break
+			}
+		}
+	}
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UPI ID"})
+		return
+	}
+
+	objectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	collection := h.db.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err = collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.M{
+		"$set": bson.M{"upi_id": req.UPIID, "updated_at": time.Now()},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update UPI"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "upi_id": req.UPIID})
 }

@@ -8,25 +8,27 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID              primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	Email           string             `json:"email" bson:"email"`
-	Name            string             `json:"name" bson:"name"`
-	AuthProvider    string             `json:"auth_provider" bson:"auth_provider"`     // "firebase", "google"
-	EmailVerified   bool               `json:"email_verified" bson:"email_verified"`
-	ProfilePicture  string             `json:"profile_picture" bson:"profile_picture"`
-	FirebaseUID     string             `json:"firebase_uid" bson:"firebase_uid"`
-	CreatedAt       time.Time          `json:"created_at" bson:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at" bson:"updated_at"`
+	ID             primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Email          string             `json:"email" bson:"email"`
+	Name           string             `json:"name" bson:"name"`
+	AuthProvider   string             `json:"auth_provider" bson:"auth_provider"` // "firebase", "google"
+	EmailVerified  bool               `json:"email_verified" bson:"email_verified"`
+	ProfilePicture string             `json:"profile_picture" bson:"profile_picture"`
+	UPIID          string             `json:"upi_id,omitempty" bson:"upi_id,omitempty"`
+	FirebaseUID    string             `json:"firebase_uid" bson:"firebase_uid"`
+	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // Expense represents an expense entry
 type Expense struct {
 	ID           primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`
+	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`                         // Creator's user ID
+	CoupleID     primitive.ObjectID `json:"couple_id,omitempty" bson:"couple_id,omitempty"` // Optional: for couple expenses
 	Description  string             `json:"description" bson:"description"`
 	TotalAmount  float64            `json:"total_amount" bson:"total_amount"`
 	Category     string             `json:"category" bson:"category"`
-	PaidBy       string             `json:"paid_by" bson:"paid_by"` // "person1" or "person2"
+	PaidBy       string             `json:"paid_by" bson:"paid_by"`       // "person1" or "person2"
 	SplitType    string             `json:"split_type" bson:"split_type"` // "equal", "ratio", "exact"
 	Person1Share float64            `json:"person1_share" bson:"person1_share"`
 	Person2Share float64            `json:"person2_share" bson:"person2_share"`
@@ -37,7 +39,8 @@ type Expense struct {
 // Transfer represents a money transfer between users
 type Transfer struct {
 	ID          primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	UserID      primitive.ObjectID `json:"user_id" bson:"user_id"`
+	UserID      primitive.ObjectID `json:"user_id" bson:"user_id"`                         // Creator's user ID
+	CoupleID    primitive.ObjectID `json:"couple_id,omitempty" bson:"couple_id,omitempty"` // Optional: for couple transfers
 	Amount      float64            `json:"amount" bson:"amount"`
 	FromUser    string             `json:"from_user" bson:"from_user"` // "person1" or "person2"
 	ToUser      string             `json:"to_user" bson:"to_user"`     // "person1" or "person2"
@@ -48,15 +51,14 @@ type Transfer struct {
 
 // Settings represents user settings
 type Settings struct {
-	ID           primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	UserID       primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Person1Name  string             `json:"person1_name" bson:"person1_name"`
-	Person2Name  string             `json:"person2_name" bson:"person2_name"`
-	Theme        string             `json:"theme" bson:"theme"`
-	Currency     string             `json:"currency" bson:"currency"`
-	Notifications bool              `json:"notifications" bson:"notifications"`
-	CreatedAt    time.Time          `json:"created_at" bson:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
+	ID            primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserID        primitive.ObjectID `json:"user_id" bson:"user_id"`                         // User ID
+	CoupleID      primitive.ObjectID `json:"couple_id,omitempty" bson:"couple_id,omitempty"` // Optional: for couple settings
+	Theme         string             `json:"theme" bson:"theme"`
+	Currency      string             `json:"currency" bson:"currency"`
+	Notifications bool               `json:"notifications" bson:"notifications"`
+	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // Notification represents a notification
@@ -93,8 +95,6 @@ type CreateTransferRequest struct {
 
 // UpdateSettingsRequest represents the request to update settings
 type UpdateSettingsRequest struct {
-	Person1Name   string `json:"person1_name"`
-	Person2Name   string `json:"person2_name"`
 	Theme         string `json:"theme"`
 	Currency      string `json:"currency"`
 	Notifications bool   `json:"notifications"`
@@ -133,6 +133,11 @@ type FirebaseTokenRequest struct {
 	ProfilePicture string `json:"profile_picture"`
 }
 
+// UpdateUPIRequest represents request to set/update UPI ID for a user
+type UpdateUPIRequest struct {
+	UPIID string `json:"upi_id" binding:"required"`
+}
+
 // AuthResponse represents the authentication response
 type AuthResponse struct {
 	Token string `json:"token"`
@@ -141,23 +146,23 @@ type AuthResponse struct {
 
 // BalanceResponse represents the balance calculation response
 type BalanceResponse struct {
-	Person1Net     float64 `json:"person1_net"`
-	Person2Net     float64 `json:"person2_net"`
-	WhoOwesWho     string  `json:"who_owes_who"`
-	AmountOwed     float64 `json:"amount_owed"`
-	Person1Status  string  `json:"person1_status"`
-	Person2Status  string  `json:"person2_status"`
+	Person1Net    float64 `json:"person1_net"`
+	Person2Net    float64 `json:"person2_net"`
+	WhoOwesWho    string  `json:"who_owes_who"`
+	AmountOwed    float64 `json:"amount_owed"`
+	Person1Status string  `json:"person1_status"`
+	Person2Status string  `json:"person2_status"`
 }
 
 // MonthlyReportResponse represents the monthly report response
 type MonthlyReportResponse struct {
-	TotalSpent     float64                    `json:"total_spent"`
-	Person1Paid    float64                    `json:"person1_paid"`
-	Person2Paid    float64                    `json:"person2_paid"`
-	CategoryTotals map[string]float64          `json:"category_totals"`
-	Expenses       []Expense                  `json:"expenses"`
-	Transfers      []Transfer                 `json:"transfers"`
-	Balance        BalanceResponse            `json:"balance"`
+	TotalSpent     float64            `json:"total_spent"`
+	Person1Paid    float64            `json:"person1_paid"`
+	Person2Paid    float64            `json:"person2_paid"`
+	CategoryTotals map[string]float64 `json:"category_totals"`
+	Expenses       []Expense          `json:"expenses"`
+	Transfers      []Transfer         `json:"transfers"`
+	Balance        BalanceResponse    `json:"balance"`
 }
 
 // VerificationCode represents a verification code for email
@@ -167,6 +172,46 @@ type VerificationCode struct {
 	Code      string             `json:"code" bson:"code"`
 	ExpiresAt time.Time          `json:"expires_at" bson:"expires_at"`
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+}
+
+// Couple represents a couple relationship between two users
+type Couple struct {
+	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	User1ID   primitive.ObjectID `json:"user1_id" bson:"user1_id"`
+	User2ID   primitive.ObjectID `json:"user2_id" bson:"user2_id,omitempty"` // Optional if pending
+	Status    string             `json:"status" bson:"status"`               // "active", "pending", "inactive"
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
+}
+
+// Invitation represents a partner invitation
+type Invitation struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	CoupleID     primitive.ObjectID `json:"couple_id" bson:"couple_id"`
+	InviterID    primitive.ObjectID `json:"inviter_id" bson:"inviter_id"`
+	InviteeEmail string             `json:"invitee_email" bson:"invitee_email"`
+	Token        string             `json:"token" bson:"token"`
+	ExpiresAt    time.Time          `json:"expires_at" bson:"expires_at"`
+	Status       string             `json:"status" bson:"status"` // "pending", "accepted", "rejected", "expired"
+	CreatedAt    time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
+}
+
+// CreateCoupleRequest represents the request to create/invite a couple
+type CreateCoupleRequest struct {
+	InviteeEmail string `json:"invitee_email" binding:"required,email"`
+}
+
+// AcceptInvitationRequest represents the request to accept an invitation
+type AcceptInvitationRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+// CoupleResponse represents the couple information response
+type CoupleResponse struct {
+	Couple     Couple      `json:"couple"`
+	Partner    User        `json:"partner,omitempty"`
+	Invitation *Invitation `json:"invitation,omitempty"`
 }
 
 // APIResponse represents a generic API response

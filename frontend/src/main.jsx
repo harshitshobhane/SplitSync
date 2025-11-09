@@ -25,6 +25,10 @@ const router = createBrowserRouter(
       path: '/',
       element: <App />,
     },
+    {
+      path: '/invite/:token',
+      element: <App />, // Will be handled in App.jsx
+    },
   ],
   {
     future: {
@@ -38,7 +42,7 @@ function Root() {
     <ThemeProvider>
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
+          <RouterProvider router={router} future={{ v7_startTransition: true }} />
           <Toaster
             position="top-center"
             toastOptions={{
@@ -86,3 +90,29 @@ if (container._reactRootContainer) {
 const root = createRoot(container)
 root.render(<Root />)
 container._reactRootContainer = root
+
+// Register Service Worker (PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    const swUrl = '/sw.js'
+    navigator.serviceWorker.register(swUrl).then((reg) => {
+      // Update prompt
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing
+        if (!newWorker) return
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            const wantsUpdate = confirm('A new version of SplitSync is available. Update now?')
+            if (wantsUpdate && reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+            }
+          }
+        })
+      })
+      // Reload when the new SW takes control
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload()
+      })
+    }).catch(() => {})
+  })
+}

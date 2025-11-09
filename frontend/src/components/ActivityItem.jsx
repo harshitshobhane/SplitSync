@@ -14,6 +14,7 @@ const iconMap = {
 
 const ActivityItem = ({ item, names, currency = 'USD' }) => {
   const isExpense = item.totalAmount !== undefined
+  const isQueued = !!(item.queued || item._queued)
   
   const category = isExpense ? CATEGORIES[item.category] || CATEGORIES.other : null
   const CategoryIcon = category ? iconMap[category.icon] : null
@@ -21,7 +22,7 @@ const ActivityItem = ({ item, names, currency = 'USD' }) => {
   return (
     <motion.div 
       whileHover={{ scale: 1.005, y: -1 }}
-      className="group relative overflow-hidden bg-card/80 backdrop-blur-sm border border-border/60 rounded-2xl p-4 sm:p-5 hover:border-border/80 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+      className={`group relative overflow-hidden bg-card/80 backdrop-blur-sm border rounded-2xl p-4 sm:p-5 hover:border-border/80 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 ${isQueued ? 'border-dashed border-amber-400/70' : 'border-border/60'}`}
     >
       {/* Subtle gradient accent */}
       <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -60,7 +61,7 @@ const ActivityItem = ({ item, names, currency = 'USD' }) => {
         </div>
 
         {/* Content Section */}
-        <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
           {/* Header Row: Title + Amount */}
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="flex-1 min-w-0">
@@ -74,6 +75,9 @@ const ActivityItem = ({ item, names, currency = 'USD' }) => {
               <p className={`text-lg sm:text-xl font-extrabold tracking-tight ${isExpense ? 'text-foreground' : 'text-blue-600 dark:text-blue-500'}`}>
                 {formatCurrency(isExpense ? item.totalAmount : item.amount, currency)}
               </p>
+                {isQueued && (
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/30">Queued</span>
+                )}
             </div>
           </div>
 

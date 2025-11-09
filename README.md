@@ -97,12 +97,7 @@ cd frontend
 npm install
 ```
 
-3. Create environment file:
-```bash
-cp .env.example .env
-```
-
-4. Start development server:
+3. Start development server:
 ```bash
 npm run dev
 ```
@@ -119,35 +114,9 @@ cd backend
 go mod tidy
 ```
 
-3. Create environment file:
-```bash
-cp .env.example .env
-```
-
-4. Update MongoDB connection string in `.env`
-
-5. Run the server:
+3. Run the server:
 ```bash
 go run main.go
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-#### Frontend (.env)
-```env
-VITE_API_URL=http://localhost:8080/api
-VITE_APP_NAME=SplitSync
-```
-
-#### Backend (.env)
-```env
-ENVIRONMENT=development
-PORT=8080
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?appName=SplitSync
-JWT_SECRET=your-secret-key
-DATABASE_NAME=splitsync
 ```
 
 ## 📱 PWA Features
@@ -252,4 +221,4 @@ For support, email support@splitsync.app or create an issue on GitHub.
 ---
 
 Made with ❤️ for couples who want to split expenses easily and beautifully.
-"# SplitSync" 
+

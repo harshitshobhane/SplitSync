@@ -15,6 +15,7 @@ func SetupRoutes(
 	transferHandler *handlers.TransferHandler,
 	settingsHandler *handlers.SettingsHandler,
 	reportHandler *handlers.ReportHandler,
+	coupleHandler *handlers.CoupleHandler,
 ) {
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
@@ -26,7 +27,7 @@ func SetupRoutes(
 	{
 		setupAuthRoutes(v1, authHandler)
 		setupProtectedAuthRoutes(v1, authHandler)
-		setupProtectedRoutes(v1, expenseHandler, transferHandler, settingsHandler, reportHandler)
+		setupProtectedRoutes(v1, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler)
 	}
 
 	// Legacy API routes (for backward compatibility)
@@ -34,7 +35,7 @@ func SetupRoutes(
 	{
 		setupAuthRoutes(api, authHandler)
 		setupProtectedAuthRoutes(api, authHandler)
-		setupProtectedRoutes(api, expenseHandler, transferHandler, settingsHandler, reportHandler)
+		setupProtectedRoutes(api, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler)
 	}
 }
 
@@ -53,6 +54,7 @@ func setupProtectedAuthRoutes(group *gin.RouterGroup, authHandler *handlers.Auth
 	protected.Use(middleware.Auth())
 	{
 		protected.GET("/me", authHandler.GetCurrentUser)
+		protected.PUT("/upi", authHandler.UpdateUPI)
 	}
 }
 
@@ -63,10 +65,21 @@ func setupProtectedRoutes(
 	transferHandler *handlers.TransferHandler,
 	settingsHandler *handlers.SettingsHandler,
 	reportHandler *handlers.ReportHandler,
+	coupleHandler *handlers.CoupleHandler,
 ) {
 	protected := group.Group("/")
 	protected.Use(middleware.Auth())
 	{
+		// Couple routes
+		couples := protected.Group("/couples")
+		{
+			couples.GET("", coupleHandler.GetCurrentCouple)
+			couples.POST("/invite", coupleHandler.InvitePartner)
+			couples.POST("/accept", coupleHandler.AcceptInvitation)
+			couples.POST("/reject", coupleHandler.RejectInvitation)
+			couples.POST("/disconnect", coupleHandler.DisconnectCouple)
+		}
+
 		// Expense routes
 		expenses := protected.Group("/expenses")
 		{

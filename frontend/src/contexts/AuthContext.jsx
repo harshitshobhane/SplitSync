@@ -127,8 +127,15 @@ export function AuthProvider({ children }) {
       }
       
       // Send verification email immediately after registration
-      await sendEmailVerification(userCredential.user)
-      toast.success('Account created! Please check your email to verify.')
+      // Note: This may fail if email verification is not enabled in Firebase Console
+      try {
+        await sendEmailVerification(userCredential.user)
+        toast.success('Account created! Please check your email to verify.')
+      } catch (emailError) {
+        // Email verification might not be configured, but account is still created
+        console.warn('Email verification not sent:', emailError)
+        toast.success('Account created! You can verify your email later from settings.')
+      }
       return userCredential
     } catch (error) {
       let errorMessage = 'Registration failed'
@@ -190,7 +197,16 @@ export function AuthProvider({ children }) {
       await sendEmailVerification(firebaseUser)
       toast.success('Verification email sent! Please check your inbox.')
     } catch (error) {
-      toast.error('Failed to send verification email')
+      let errorMessage = 'Failed to send verification email'
+      if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please try again in a few minutes.'
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your connection.'
+      } else if (error.message?.includes('400')) {
+        errorMessage = 'Email verification is not enabled in Firebase Console. Please contact support or skip email verification.'
+      }
+      toast.error(errorMessage)
+      console.error('Email verification error:', error)
       throw error
     }
   }

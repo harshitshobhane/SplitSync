@@ -21,7 +21,29 @@ func NewTransferHandler(db *mongo.Database) *TransferHandler {
 	return &TransferHandler{db: db}
 }
 
-// GetTransfers retrieves all transfers for a user
+// getCoupleID retrieves the user's active couple ID if exists
+func (h *TransferHandler) getCoupleID(ctx context.Context, userObjectID primitive.ObjectID) (primitive.ObjectID, error) {
+	couplesCollection := h.db.Collection("couples")
+	var couple models.Couple
+	err := couplesCollection.FindOne(ctx, bson.M{
+		"$or": []bson.M{
+			{"user1_id": userObjectID},
+			{"user2_id": userObjectID},
+		},
+		"status": "active",
+	}).Decode(&couple)
+
+	if err == mongo.ErrNoDocuments {
+		return primitive.NilObjectID, nil
+	}
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+
+	return couple.ID, nil
+}
+
+// GetTransfers retrieves all transfers for a user (including couple transfers)
 func (h *TransferHandler) GetTransfers(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {
@@ -53,13 +75,33 @@ func (h *TransferHandler) GetTransfers(c *gin.Context) {
 		return
 	}
 
-	// Query with ObjectID or string (to handle both cases)
-	cursor, err := collection.Find(ctx, bson.M{
+	// Get user's couple ID if exists
+	coupleID, err := h.getCoupleID(ctx, userObjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch couple information"})
+		return
+	}
+
+	// Build query: transfers belonging to user OR couple
+	query := bson.M{
 		"$or": []bson.M{
 			{"user_id": userObjectID},
 			{"user_id": userID},
 		},
-	})
+	}
+
+	// If user has a couple, include couple transfers
+	if !coupleID.IsZero() {
+		query = bson.M{
+			"$or": []bson.M{
+				{"user_id": userObjectID},
+				{"user_id": userID},
+				{"couple_id": coupleID},
+			},
+		}
+	}
+
+	cursor, err := collection.Find(ctx, query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch transfers"})
 		return
@@ -102,8 +144,20 @@ func (h *TransferHandler) CreateTransfer(c *gin.Context) {
 		return
 	}
 
+	collection := h.db.Collection("transfers")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Get user's couple ID if exists
+	coupleID, err := h.getCoupleID(ctx, userObjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch couple information"})
+		return
+	}
+
 	transfer := models.Transfer{
 		UserID:      userObjectID,
+		CoupleID:    coupleID,
 		Amount:      req.Amount,
 		FromUser:    req.FromUser,
 		ToUser:      req.ToUser,
@@ -111,10 +165,6 @@ func (h *TransferHandler) CreateTransfer(c *gin.Context) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-
-	collection := h.db.Collection("transfers")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	result, err := collection.InsertOne(ctx, transfer)
 	if err != nil {
@@ -157,6 +207,39 @@ func (h *TransferHandler) UpdateTransfer(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Get user's couple ID
+	coupleID, err := h.getCoupleID(ctx, userObjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch couple information"})
+		return
+	}
+
+	// Build query: transfer must belong to user or couple
+	query := bson.M{
+		"_id": objectID,
+		"$or": []bson.M{
+			{"user_id": userObjectID},
+			{"user_id": userID},
+		},
+	}
+
+	if !coupleID.IsZero() {
+		query = bson.M{
+			"_id": objectID,
+			"$or": []bson.M{
+				{"user_id": userObjectID},
+				{"user_id": userID},
+				{"couple_id": coupleID},
+			},
+		}
+	}
+
 	update := bson.M{
 		"$set": bson.M{
 			"amount":      req.Amount,
@@ -167,7 +250,7 @@ func (h *TransferHandler) UpdateTransfer(c *gin.Context) {
 		},
 	}
 
-	result, err := collection.UpdateOne(ctx, bson.M{"_id": objectID, "user_id": userID}, update)
+	result, err := collection.UpdateOne(ctx, query, update)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update transfer"})
 		return
@@ -200,7 +283,40 @@ func (h *TransferHandler) DeleteTransfer(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	result, err := collection.DeleteOne(ctx, bson.M{"_id": objectID, "user_id": userID})
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Get user's couple ID
+	coupleID, err := h.getCoupleID(ctx, userObjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch couple information"})
+		return
+	}
+
+	// Build query: transfer must belong to user or couple
+	query := bson.M{
+		"_id": objectID,
+		"$or": []bson.M{
+			{"user_id": userObjectID},
+			{"user_id": userID},
+		},
+	}
+
+	if !coupleID.IsZero() {
+		query = bson.M{
+			"_id": objectID,
+			"$or": []bson.M{
+				{"user_id": userObjectID},
+				{"user_id": userID},
+				{"couple_id": coupleID},
+			},
+		}
+	}
+
+	result, err := collection.DeleteOne(ctx, query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete transfer"})
 		return

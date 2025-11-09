@@ -49,7 +49,19 @@ api.interceptors.response.use(
 export const apiService = {
   // Auth
   async verifyFirebaseToken(userData) {
-    const response = await api.post('/auth/verify', userData)
+    // Check if there's an invitation token in localStorage
+    const invitationToken = localStorage.getItem('invitation_token')
+    const config = {
+      headers: {}
+    }
+    if (invitationToken) {
+      config.headers['X-Invitation-Token'] = invitationToken
+    }
+    const response = await api.post('/auth/verify', userData, config)
+    // Clear invitation token after successful auth
+    if (invitationToken) {
+      localStorage.removeItem('invitation_token')
+    }
     return response.data
   },
 
@@ -63,6 +75,11 @@ export const apiService = {
     return response.data.user
   },
 
+  async updateUPI(upiId) {
+    const response = await api.put('/auth/upi', { upi_id: upiId })
+    return response.data
+  },
+
   // Expenses
   async getExpenses() {
     const response = await api.get('/expenses')
@@ -72,6 +89,7 @@ export const apiService = {
     return expenses.map(expense => ({
       ...expense,
       id: expense.id || expense._id,
+      user_id: expense.user_id || expense.userId || expense.userID, // Keep creator ID for normalization
       totalAmount: expense.total_amount || expense.totalAmount,
       paidBy: expense.paid_by || expense.paidBy,
       splitType: expense.split_type || expense.splitType,
@@ -85,6 +103,9 @@ export const apiService = {
 
   async createExpense(expenseData) {
     const response = await api.post('/expenses', expenseData)
+    if (response.status === 202) {
+      return { queued: true }
+    }
     return response.data
   },
 
@@ -107,8 +128,9 @@ export const apiService = {
     return transfers.map(transfer => ({
       ...transfer,
       id: transfer.id || transfer._id,
+      user_id: transfer.user_id || transfer.userId || transfer.userID, // Keep creator ID for normalization
       fromUser: transfer.from_user || transfer.fromUser,
-      toUser: transfer.to_user || transfer.to_user || transfer.toUser,
+      toUser: transfer.to_user || transfer.toUser,
       created_at: transfer.created_at || transfer.createdAt,
       createdAt: transfer.created_at || transfer.createdAt,
       updatedAt: transfer.updated_at || transfer.updatedAt
@@ -117,6 +139,9 @@ export const apiService = {
 
   async createTransfer(transferData) {
     const response = await api.post('/transfers', transferData)
+    if (response.status === 202) {
+      return { queued: true }
+    }
     return response.data
   },
 
@@ -133,13 +158,7 @@ export const apiService = {
   // Settings
   async getSettings() {
     const response = await api.get('/settings')
-    // Backend returns snake_case, convert to camelCase for frontend
-    const data = response.data
-    return {
-      ...data,
-      person1Name: data.person1_name || data.person1Name,
-      person2Name: data.person2_name || data.person2Name,
-    }
+    return response.data
   },
 
   async updateSettings(settingsData) {
@@ -174,6 +193,38 @@ export const apiService = {
 
   async markNotificationRead(id) {
     const response = await api.put(`/notifications/${id}/read`)
+    return response.data
+  },
+
+  // Couples
+  async getCurrentCouple() {
+    const response = await api.get('/couples')
+    return response.data
+  },
+
+  async invitePartner(inviteeEmail) {
+    const response = await api.post('/couples/invite', {
+      invitee_email: inviteeEmail
+    })
+    return response.data
+  },
+
+  async acceptInvitation(token) {
+    const response = await api.post('/couples/accept', {
+      token: token
+    })
+    return response.data
+  },
+
+  async rejectInvitation(token) {
+    const response = await api.post('/couples/reject', {
+      token: token
+    })
+    return response.data
+  },
+
+  async disconnectCouple() {
+    const response = await api.post('/couples/disconnect')
     return response.data
   }
 }

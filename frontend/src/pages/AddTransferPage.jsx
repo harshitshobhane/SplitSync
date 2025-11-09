@@ -43,10 +43,14 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   const balanceInfo = getBalanceInfo()
 
   const createTransferMutation = useMutation(apiService.createTransfer, {
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries(['transfers'])
       queryClient.invalidateQueries(['expenses'])
-      toast.success('Transfer recorded')
+      if (data && data.queued) {
+        toast.success('Transfer queued and will sync when online')
+      } else {
+        toast.success('Transfer recorded')
+      }
       setTimeout(() => setPage('dashboard'), 500)
     },
     onError: () => {

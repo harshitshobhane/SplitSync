@@ -1,4 +1,5 @@
-import React, { useState, useMemo, Suspense, lazy } from 'react'
+import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react'
+import { useQueryClient } from 'react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from 'react-query'
 import { 
@@ -12,6 +13,7 @@ import {
   Search,
 } from 'lucide-react'
 import { useAuthContext } from './contexts/AuthContext'
+import { useLocation } from 'react-router-dom'
 
 // Lazy load components for better performance
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'))
@@ -25,6 +27,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage.jsx'))
 const SignupPage = lazy(() => import('./pages/SignupPage.jsx'))
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.jsx'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'))
+const InvitePage = lazy(() => import('./pages/InvitePage.jsx'))
 
 // API functions
 import { apiService as api } from './lib/api'
@@ -135,15 +138,78 @@ const BottomNav = ({ currentPage, setPage }) => {
 // Main App Component
 export default function App() {
   // Declare ALL hooks at the top, before any conditional logic
+  const location = useLocation()
   const [authView, setAuthView] = useState(null) // 'landing', 'login', 'signup', 'verify', null
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const { user, isLoading: authLoading, isAuthenticated } = useAuthContext()
   const [appPage, setAppPage] = useState('dashboard')
   const [showProfile, setShowProfile] = useState(false)
+  const [fxTick, setFxTick] = useState(0)
+  const queryClient = useQueryClient()
 
-  // Fetch data (hooks must be called unconditionally)
-  const { data: expenses = [], isLoading: expensesLoading } = useQuery(
+  // Prefetch FX rates (base INR) and cache in localStorage to enable display conversion
+  useEffect(() => {
+    const base = 'INR'
+    try {
+      localStorage.setItem('fx_base', base)
+      const cacheKey = `fx_${base}`
+      const cachedRaw = localStorage.getItem(cacheKey)
+      const now = Date.now()
+      const ttlMs = 12 * 60 * 60 * 1000 // 12 hours
+      let shouldFetch = true
+      if (cachedRaw) {
+        try {
+          const cached = JSON.parse(cachedRaw)
+          if (cached && cached.timestamp && now - cached.timestamp < ttlMs) {
+            shouldFetch = false
+          }
+        } catch {}
+      }
+      if (!shouldFetch) return
+      const save = (rates) => {
+        const payload = { rates, timestamp: Date.now() }
+        localStorage.setItem(cacheKey, JSON.stringify(payload))
+        setFxTick(t => t + 1)
+      }
+      const tryHost = () => fetch('https://api.exchangerate.host/latest?base=' + base)
+        .then(r => r.json()).then(d => { if (d?.rates) save(d.rates); else throw new Error('no rates') })
+      const tryOpen = () => fetch('https://open.er-api.com/v6/latest/' + base)
+        .then(r => r.json()).then(d => { if (d?.rates) save(d.rates); else throw new Error('no rates') })
+      const tryXRapi = () => fetch('https://api.exchangerate-api.com/v4/latest/' + base)
+        .then(r => r.json()).then(d => { if (d?.rates) save(d.rates); else throw new Error('no rates') })
+      tryHost().catch(() => tryOpen().catch(() => tryXRapi().catch(() => {})))
+    } catch {}
+  }, [])
+
+  // Periodic refresh for FX rates and today’s data
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        // Trigger FX refresh by clearing staleness window
+        const base = 'INR'
+        const cacheKey = `fx_${base}`
+        const raw = localStorage.getItem(cacheKey)
+        if (raw) {
+          const cached = JSON.parse(raw)
+          cached.timestamp = 0
+          localStorage.setItem(cacheKey, JSON.stringify(cached))
+        }
+        // Force a re-render to apply any newly fetched rates
+        setFxTick(t => t + 1)
+      } catch {}
+      // Refetch data queries (only if authenticated)
+      if (isAuthenticated) {
+        queryClient.invalidateQueries(['expenses'])
+        queryClient.invalidateQueries(['transfers'])
+        queryClient.invalidateQueries(['settings'])
+      }
+    }, 30 * 60 * 1000) // every 30 minutes
+    return () => clearInterval(interval)
+  }, [isAuthenticated, queryClient])
+
+  // Fetch data (hooks must be called unconditionally - BEFORE any early returns)
+  const { data: expensesRaw = [], isLoading: expensesLoading } = useQuery(
     'expenses',
     api.getExpenses,
     { 
@@ -154,7 +220,34 @@ export default function App() {
     }
   )
 
-  const { data: transfers = [], isLoading: transfersLoading } = useQuery(
+  // Normalize expenses: swap person1/person2 if expense was created by partner
+  const expenses = useMemo(() => {
+    if (!expensesRaw || !user) return expensesRaw
+    
+    // Current user ID
+    const currentUserId = user.id || user._id || user.uid
+    
+    return expensesRaw.map(expense => {
+      // Expense creator ID
+      const creatorId = expense.user_id || expense.userId || expense.userID
+      
+      // If expense was created by partner (not current user), swap person1 <-> person2
+      const isCreatedByPartner = creatorId && String(creatorId) !== String(currentUserId)
+      
+      if (isCreatedByPartner) {
+        return {
+          ...expense,
+          paidBy: expense.paidBy === 'person1' ? 'person2' : 'person1',
+          person1Share: expense.person2Share || expense.person2_share,
+          person2Share: expense.person1Share || expense.person1_share
+        }
+      }
+      
+      return expense
+    })
+  }, [expensesRaw, user])
+
+  const { data: transfersRaw = [], isLoading: transfersLoading } = useQuery(
     'transfers',
     api.getTransfers,
     { 
@@ -164,6 +257,32 @@ export default function App() {
       refetchInterval: false
     }
   )
+
+  // Normalize transfers: swap person1/person2 if transfer was created by partner
+  const transfers = useMemo(() => {
+    if (!transfersRaw || !user) return transfersRaw
+    
+    // Current user ID (try multiple possible fields)
+    const currentUserId = user.id || user._id || user.uid
+    
+    return transfersRaw.map(transfer => {
+      // Transfer creator ID
+      const creatorId = transfer.user_id || transfer.userId || transfer.userID
+      
+      // If transfer was created by partner (not current user), swap person1 <-> person2
+      const isCreatedByPartner = creatorId && String(creatorId) !== String(currentUserId)
+      
+      if (isCreatedByPartner) {
+        return {
+          ...transfer,
+          fromUser: transfer.fromUser === 'person1' ? 'person2' : 'person1',
+          toUser: transfer.toUser === 'person1' ? 'person2' : 'person1'
+        }
+      }
+      
+      return transfer
+    })
+  }, [transfersRaw, user])
 
   const { data: settings = DEFAULT_SETTINGS } = useQuery(
     'settings',
@@ -175,12 +294,32 @@ export default function App() {
     }
   )
 
+  // Fetch couple info to get partner name
+  const { data: coupleInfo } = useQuery(
+    'couple',
+    api.getCurrentCouple,
+    { 
+      enabled: isAuthenticated && !!localStorage.getItem('auth_token'),
+      retry: false,
+      refetchOnWindowFocus: true,
+      refetchInterval: 30000 // Poll every 30 seconds for partner updates
+    }
+  )
+
   const loading = expensesLoading || transfersLoading
+
+  // Get user's own name (from auth context)
+  const userName = user?.name || user?.displayName || user?.email?.split('@')[0] || 'You'
+
+  // Get partner name for calculations
+  const partnerName = coupleInfo?.couple?.status === 'active' && coupleInfo?.partner
+    ? (coupleInfo.partner.name || coupleInfo.partner.email?.split('@')[0] || 'Partner')
+    : 'Partner'
 
   // Calculate balance using utility function
   const balanceResult = useMemo(() => {
-    return calculateBalance(expenses, transfers, settings.person1Name, settings.person2Name)
-  }, [expenses, transfers, settings.person1Name, settings.person2Name])
+    return calculateBalance(expenses, transfers, userName, partnerName)
+  }, [expenses, transfers, userName, partnerName, fxTick])
 
   // Filter expenses based on search
   const filteredExpenses = useMemo(() => {
@@ -190,6 +329,16 @@ export default function App() {
       expense.category.toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [expenses, searchQuery])
+
+  // Check if this is an invitation link (AFTER all hooks)
+  const inviteMatch = location.pathname.match(/^\/invite\/(.+)$/)
+  if (inviteMatch) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <InvitePage />
+      </Suspense>
+    )
+  }
 
   // Show loading while checking auth
   if (authLoading) {
@@ -260,7 +409,11 @@ export default function App() {
       )
     }
 
-    const names = { person1Name: settings.person1Name, person2Name: settings.person2Name }
+    // Use user's own name and partner name (already calculated above)
+    const names = { 
+      person1Name: userName, 
+      person2Name: partnerName 
+    }
     
     const pageProps = {
       balance: balanceResult,

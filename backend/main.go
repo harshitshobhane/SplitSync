@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os"
+	"strings"
 
 	"splitsync-backend/internal/config"
 	"splitsync-backend/internal/database"
@@ -53,10 +55,20 @@ func main() {
 	router := gin.Default()
 
 	// Configure CORS
+	allowedOrigins := []string{"http://localhost:3000"}
+	if cfg.Environment == "production" {
+		// Get allowed origins from environment variable (comma-separated)
+		if origins := os.Getenv("ALLOWED_ORIGINS"); origins != "" {
+			for _, origin := range strings.Split(origins, ",") {
+				allowedOrigins = append(allowedOrigins, strings.TrimSpace(origin))
+			}
+		}
+	}
+
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "https://yourdomain.com"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Invitation-Token"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}
@@ -74,9 +86,10 @@ func main() {
 	transferHandler := handlers.NewTransferHandler(db)
 	settingsHandler := handlers.NewSettingsHandler(db)
 	reportHandler := handlers.NewReportHandler(db)
+	coupleHandler := handlers.NewCoupleHandler(db)
 
 	// Setup routes
-	routes.SetupRoutes(router, authHandler, expenseHandler, transferHandler, settingsHandler, reportHandler)
+	routes.SetupRoutes(router, authHandler, expenseHandler, transferHandler, settingsHandler, reportHandler, coupleHandler)
 
 	// Start server
 	port := cfg.Port

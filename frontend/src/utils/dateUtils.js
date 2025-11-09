@@ -46,11 +46,64 @@ export const formatDateShort = (timestamp) => {
   return date.toLocaleDateString() + ', ' + time
 }
 
+// Returns a converted and formatted amount. Assumes base currency is INR unless overridden via localStorage('fx_base').
 export const formatCurrency = (amount, currency = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
+  const base = (typeof localStorage !== 'undefined' && localStorage.getItem('fx_base')) || 'INR'
+  let amountToFormat = Number(amount) || 0
+
+  // Convert from base -> target if different and we have rates cached
+  if (currency && base && currency !== base) {
+    try {
+      const cacheKey = `fx_${base}`
+      const raw = typeof localStorage !== 'undefined' && localStorage.getItem(cacheKey)
+      if (raw) {
+        const cached = JSON.parse(raw)
+        const rate = cached?.rates?.[currency]
+        if (typeof rate === 'number' && rate > 0) {
+          amountToFormat = amountToFormat * rate
+        }
+      }
+    } catch (_) {
+      // ignore conversion errors and fall back to original amount
+    }
+  }
+  // Map currency to appropriate locale for better formatting
+  const localeMap = {
+    'USD': 'en-US',
+    'EUR': 'de-DE',  // Uses € format
+    'GBP': 'en-GB',  // Uses £ format
+    'INR': 'en-IN',  // Uses ₹ format
+    'JPY': 'ja-JP',  // Uses ¥ format
+    'CNY': 'zh-CN',  // Uses ¥ format
+    'CAD': 'en-CA',
+    'AUD': 'en-AU',
+    'CHF': 'de-CH',
+    'SEK': 'sv-SE',
+    'NOK': 'no-NO',
+    'DKK': 'da-DK',
+  }
+  
+  const locale = localeMap[currency] || 'en-US'
+  
+  // For INR and some currencies, ensure proper decimal handling
+  const options = {
     style: 'currency',
     currency: currency,
-  }).format(amount)
+  }
+  
+  // For JPY and some currencies, don't show decimals
+  if (['JPY', 'KRW'].includes(currency)) {
+    options.minimumFractionDigits = 0
+    options.maximumFractionDigits = 0
+  }
+  
+  try {
+    return new Intl.NumberFormat(locale, options).format(amountToFormat)
+  } catch (error) {
+    // Fallback to simple formatting
+    const symbol = getCurrencySymbol(currency)
+    return `${symbol}${amountToFormat.toFixed(2)}`
+  }
 }
 
 export const getCurrencySymbol = (currency = 'USD') => {

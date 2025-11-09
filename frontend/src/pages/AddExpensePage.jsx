@@ -209,10 +209,14 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
   const total = parseFloat(formData.totalAmount) || 0
 
   const createExpenseMutation = useMutation(apiService.createExpense, {
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries(['expenses'])
       queryClient.invalidateQueries(['transfers']) // Refresh transfers too for balance calculation
-      toast.success('Expense added!')
+      if (data && data.queued) {
+        toast.success('Expense queued and will sync when online')
+      } else {
+        toast.success('Expense added!')
+      }
       setTimeout(() => setPage('dashboard'), 500)
     },
     onError: () => {
