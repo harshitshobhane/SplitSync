@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQueryClient, useQuery } from 'react-query'
 import toast from 'react-hot-toast'
-import { Loader2, ArrowRightLeft, FileText, Minus, Plus, Wallet, Smartphone, X, CheckCircle, AlertCircle, Copy, Check, QrCode, ChevronDown } from 'lucide-react'
+import { Loader2, ArrowRightLeft, FileText, Minus, Plus, Wallet, Smartphone, X, CheckCircle, AlertCircle, Copy, Check, QrCode, ChevronDown, Phone } from 'lucide-react'
 import { apiService } from '../lib/api'
 import { getCurrencySymbol, formatCurrency } from '../utils/dateUtils'
 import { generateUPIAppLinks, openUPIPayment, isUPISupported, generateUPIPaymentLink } from '../utils/upiUtils'
@@ -16,6 +16,8 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   })
   const [showUPIModal, setShowUPIModal] = useState(false)
   const [showQr, setShowQr] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('upi')
+  const [receiverPhone, setReceiverPhone] = useState('')
 
   const queryClient = useQueryClient()
   const { user } = useAuthContext()
@@ -409,20 +411,59 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                   </button>
                 </div>
 
+                {/* Payment Method Toggle */}
+                <div className="flex p-1 bg-muted/50 rounded-xl mb-6">
+                  <button
+                    onClick={() => setPaymentMethod('upi')}
+                    className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${paymentMethod === 'upi' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    UPI ID
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('mobile')}
+                    className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${paymentMethod === 'mobile' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Mobile Number
+                  </button>
+                </div>
+
                 {/* Payment Details Card */}
                 <div className="mb-6 p-4 bg-muted/30 dark:bg-muted/20 border border-border rounded-2xl">
                   <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Paying to</p>
                   <p className="text-lg font-bold text-foreground mb-1">{receiverName}</p>
-                  <div className="flex items-center gap-2 mb-3">
-                    <p className="text-xs text-muted-foreground font-mono bg-background/50 px-2 py-1 rounded border border-border/50">{receiverUPI}</p>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(receiverUPI); toast.success('UPI ID Copied'); }}
-                      className="p-1.5 hover:bg-background rounded-lg transition-colors border border-transparent hover:border-border/50"
-                      title="Copy UPI ID"
-                    >
-                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-                  </div>
+
+                  {paymentMethod === 'upi' ? (
+                    <div className="flex items-center gap-2 mb-3">
+                      <p className="text-xs text-muted-foreground font-mono bg-background/50 px-2 py-1 rounded border border-border/50">{receiverUPI}</p>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(receiverUPI); toast.success('UPI ID Copied'); }}
+                        className="p-1.5 hover:bg-background rounded-lg transition-colors border border-transparent hover:border-border/50"
+                        title="Copy UPI ID"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mb-3">
+                      <input
+                        type="tel"
+                        placeholder="Enter mobile number"
+                        value={receiverPhone}
+                        onChange={(e) => setReceiverPhone(e.target.value)}
+                        className="text-sm bg-background/50 px-3 py-1.5 rounded-lg border border-border/50 outline-none w-full font-mono placeholder:text-muted-foreground/50"
+                      />
+                      {receiverPhone && (
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(receiverPhone); toast.success('Number Copied'); }}
+                          className="p-1.5 hover:bg-background rounded-lg transition-colors border border-transparent hover:border-border/50"
+                          title="Copy Number"
+                        >
+                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   <div className="pt-3 border-t border-border">
                     <p className="text-2xl font-extrabold text-foreground">{formatCurrency(parseFloat(formData.amount), currency)}</p>
                   </div>
