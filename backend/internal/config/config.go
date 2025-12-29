@@ -27,7 +27,7 @@ func Load() *Config {
 		Port:               getEnv("PORT", "8080"),
 		MongoURI:           getEnv("MONGO_URI", ""),
 		JWTSecret:          getEnv("JWT_SECRET", ""),
-		Database:           getEnv("DATABASE_NAME", "splithalf"),
+		Database:           getEnv("DATABASE_NAME", "splitsync"),
 		LogLevel:           getEnv("LOG_LEVEL", "info"),
 		RateLimit:          getEnvAsInt("RATE_LIMIT", 10),
 		FirebaseAPIKey:     getEnv("FIREBASE_API_KEY", ""),

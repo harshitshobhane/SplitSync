@@ -38,7 +38,7 @@ func Connect(uri string) (*mongo.Database, error) {
 	}
 
 	Client = client
-	Database = client.Database("splithalf")
+	Database = client.Database("splitsync")
 
 	log.Println("Successfully connected to MongoDB")
 	return Database, nil
