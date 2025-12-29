@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from 'react-query'
 import { Toaster } from 'react-hot-toast'
+import { Analytics } from '@vercel/analytics/react'
 import App from './App'
 import { ThemeProvider } from './hooks/useTheme.jsx'
 import { AuthProvider } from './contexts/AuthContext'
@@ -69,6 +70,7 @@ function Root() {
               },
             }}
           />
+          <Analytics />
         </QueryClientProvider>
       </AuthProvider>
     </ThemeProvider>
