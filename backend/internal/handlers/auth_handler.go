@@ -262,3 +262,44 @@ func (h *AuthHandler) UpdateUPI(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "upi_id": req.UPIID})
 }
+
+// UpdatePhoneNumber updates the user's phone number
+func (h *AuthHandler) UpdatePhoneNumber(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var req models.UpdatePhoneNumberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Basic phone format validation (simple length check for now)
+	if len(req.PhoneNumber) < 10 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid phone number"})
+		return
+	}
+
+	objectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	collection := h.db.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err = collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.M{
+		"$set": bson.M{"phone_number": req.PhoneNumber, "updated_at": time.Now()},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update phone number"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "phone_number": req.PhoneNumber})
+}

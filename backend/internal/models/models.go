@@ -15,6 +15,7 @@ type User struct {
 	EmailVerified  bool               `json:"email_verified" bson:"email_verified"`
 	ProfilePicture string             `json:"profile_picture" bson:"profile_picture"`
 	UPIID          string             `json:"upi_id,omitempty" bson:"upi_id,omitempty"`
+	PhoneNumber    string             `json:"phone_number,omitempty" bson:"phone_number,omitempty"`
 	FirebaseUID    string             `json:"firebase_uid" bson:"firebase_uid"`
 	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt      time.Time          `json:"updated_at" bson:"updated_at"`
@@ -150,9 +151,13 @@ type FirebaseTokenRequest struct {
 	ProfilePicture string `json:"profile_picture"`
 }
 
-// UpdateUPIRequest represents request to set/update UPI ID for a user
 type UpdateUPIRequest struct {
 	UPIID string `json:"upi_id" binding:"required"`
+}
+
+// UpdatePhoneNumberRequest represents request to set/update Phone number for a user
+type UpdatePhoneNumberRequest struct {
+	PhoneNumber string `json:"phone_number" binding:"required"`
 }
 
 // AuthResponse represents the authentication response

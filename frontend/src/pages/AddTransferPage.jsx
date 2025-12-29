@@ -22,7 +22,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   const queryClient = useQueryClient()
   const { user } = useAuthContext()
 
-  // Fetch couple info to get partner's UPI ID
+  // Fetch couple info to get partner's Phone Number
   const { data: coupleInfo } = useQuery(
     'couple',
     apiService.getCurrentCouple,
@@ -32,9 +32,9 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     }
   )
 
-  // Get UPI IDs
-  const currentUserUPI = user?.upi_id || ''
-  const partnerUPI = coupleInfo?.partner?.upi_id || ''
+  // Get Phone Numbers
+  const currentUserPhone = user?.phone_number || ''
+  const partnerPhone = coupleInfo?.partner?.phone_number || ''
 
   // Calculate balance info
   const person1Net = balance.person1Net || 0
@@ -112,8 +112,8 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   const fromName = formData.fromUser === 'person1' ? names.person1Name : names.person2Name
   const toName = toUser === 'person1' ? names.person1Name : names.person2Name
 
-  // Get receiver's UPI ID (the person receiving the payment)
-  const receiverUPI = formData.fromUser === 'person1' ? partnerUPI : currentUserUPI
+  // Get receiver's Phone Number (the person receiving the payment)
+  const receiverPhoneNum = formData.fromUser === 'person1' ? partnerPhone : currentUserPhone
   const receiverName = toName
 
   // Handle UPI payment - only opens the app, doesn't record transfer
@@ -124,13 +124,38 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       return
     }
 
-    if (!receiverUPI || !receiverUPI.includes('@')) {
-      toast.error(`${receiverName} hasn't set their UPI ID yet. Ask them to add it in Profile settings.`)
-      return
+    // We don't block if number is missing, we let user enter/copy it in modal
+    // Just open modal
+    const description = formData.description || `Payment from ${fromName}`
+
+    // If app is not universal, we might want to try to construct a VPA if we have a number
+    // e.g. NUMBER@paytm. But that's risky.
+    // Better: Just open the app. `openUPIPayment` might need adjustment or we just use it for "universal" which is fine.
+
+    // Actually, this function was used to verify data before opening modal? No, `handleUPIPayment` is called from WITHIN the modal buttons.
+    // So we just need to try to open the app.
+
+    // For direct deep links (Paytm/PhonePe buttons), they need a link.
+    // If we only have a phone number, we can't make a perfect deep link DEEP into the payment screen without a VPA.
+    // But we can let the user COPY the number and Open the app.
+
+    // So for "Copy Number & Open App" flow:
+    if (receiverPhoneNum || receiverPhone) {
+      // Just copy to clipboard? 
+      // We will do this inside the button click handler in JSX mostly (copy & open).
     }
 
-    const description = formData.description || `Payment from ${fromName}`
-    const success = openUPIPayment(receiverUPI, transferAmount, receiverName, description, app)
+    // This function originally did `openUPIPayment`.
+    // We will change it to just "open app".
+
+    const target = receiverPhone || receiverPhoneNum || ''
+    // We pass generic info. 
+    // If we want to support "Pay to Number" intents:
+    // Some apps support `upi://pay?pa=&pn=&...` with `pa` empty? No.
+
+    // We will rely on "Manual Entry" flow primarily if no VPA.
+    // So just open the app.
+    const success = openUPIPayment('', transferAmount, receiverName, description, app)
 
     if (success) {
       toast.success(`Opening ${app === 'universal' ? 'UPI app' : app}... Complete payment and return to record the transfer.`)
@@ -324,22 +349,14 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
         >
-          {receiverUPI && receiverUPI.includes('@') ? (
-            <button
-              type="button"
-              onClick={() => setShowUPIModal(true)}
-              className="w-full py-4 rounded-3xl bg-foreground text-background font-semibold text-base flex items-center justify-center gap-2 transition-all hover:opacity-95 active:scale-[0.98] border border-border/20"
-            >
-              <Smartphone className="h-5 w-5" />
-              Pay via UPI (No Charges)
-            </button>
-          ) : (
-            <div className="w-full py-3.5 px-4 rounded-3xl bg-card border border-border text-center">
-              <p className="text-sm text-muted-foreground">
-                {receiverName} needs to add their UPI ID in Profile settings to enable UPI payments
-              </p>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowUPIModal(true)}
+            className="w-full py-4 rounded-3xl bg-foreground text-background font-semibold text-base flex items-center justify-center gap-2 transition-all hover:opacity-95 active:scale-[0.98] border border-border/20"
+          >
+            <Smartphone className="h-5 w-5" />
+            Pay via UPI (No Charges)
+          </button>
         </motion.div>
       )}
 
@@ -370,7 +387,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
         </button>
 
         {/* Info text */}
-        {receiverUPI && receiverUPI.includes('@') && formData.amount && parseFloat(formData.amount) > 0 && (
+        {formData.amount && parseFloat(formData.amount) > 0 && (
           <p className="text-xs text-muted-foreground text-center">
             Or use "Pay via UPI" above, then record the transfer after payment is successful
           </p>
@@ -411,58 +428,43 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                   </button>
                 </div>
 
-                {/* Payment Method Toggle */}
-                <div className="flex p-1 bg-muted/50 rounded-xl mb-6">
-                  <button
-                    onClick={() => setPaymentMethod('upi')}
-                    className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${paymentMethod === 'upi' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    UPI ID
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod('mobile')}
-                    className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${paymentMethod === 'mobile' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    Mobile Number
-                  </button>
-                </div>
+
 
                 {/* Payment Details Card */}
                 <div className="mb-6 p-4 bg-muted/30 dark:bg-muted/20 border border-border rounded-2xl">
                   <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Paying to</p>
                   <p className="text-lg font-bold text-foreground mb-1">{receiverName}</p>
 
-                  {paymentMethod === 'upi' ? (
-                    <div className="flex items-center gap-2 mb-3">
-                      <p className="text-xs text-muted-foreground font-mono bg-background/50 px-2 py-1 rounded border border-border/50">{receiverUPI}</p>
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(receiverUPI); toast.success('UPI ID Copied'); }}
-                        className="p-1.5 hover:bg-background rounded-lg transition-colors border border-transparent hover:border-border/50"
-                        title="Copy UPI ID"
-                      >
-                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 mb-3">
+                  {/* Mobile Number Section */}
+                  <div className="flex flex-col gap-2 mb-3">
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      Mobile Number Linked to UPI
+                    </label>
+                    <div className="flex items-center gap-2">
                       <input
                         type="tel"
                         placeholder="Enter mobile number"
-                        value={receiverPhone}
+                        value={receiverPhoneNum || receiverPhone}
                         onChange={(e) => setReceiverPhone(e.target.value)}
-                        className="text-sm bg-background/50 px-3 py-1.5 rounded-lg border border-border/50 outline-none w-full font-mono placeholder:text-muted-foreground/50"
+                        readOnly={!!receiverPhoneNum}
+                        className={`text-sm bg-background/50 px-3 py-2 rounded-lg border border-border/50 outline-none w-full font-mono placeholder:text-muted-foreground/50 ${receiverPhoneNum ? 'opacity-80' : ''}`}
                       />
-                      {receiverPhone && (
+                      {(receiverPhoneNum || receiverPhone) && (
                         <button
-                          onClick={() => { navigator.clipboard.writeText(receiverPhone); toast.success('Number Copied'); }}
-                          className="p-1.5 hover:bg-background rounded-lg transition-colors border border-transparent hover:border-border/50"
+                          onClick={() => { navigator.clipboard.writeText(receiverPhoneNum || receiverPhone); toast.success('Number Copied'); }}
+                          className="p-2 hover:bg-background rounded-lg transition-colors border border-transparent hover:border-border/50 bg-background/50"
                           title="Copy Number"
                         >
-                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Copy className="h-4 w-4 text-muted-foreground" />
                         </button>
                       )}
                     </div>
-                  )}
+                    {!receiverPhoneNum && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Enter the receiver's number manually if not saved in their profile.
+                      </p>
+                    )}
+                  </div>
 
                   <div className="pt-3 border-t border-border">
                     <p className="text-2xl font-extrabold text-foreground">{formatCurrency(parseFloat(formData.amount), currency)}</p>

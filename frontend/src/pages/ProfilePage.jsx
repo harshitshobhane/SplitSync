@@ -6,22 +6,20 @@ import { apiService } from '../lib/api'
 
 export default function ProfilePage({ onBack, onLogout }) {
   const { user, logout } = useAuthContext()
-  const [upi, setUpi] = useState(user?.upi_id || '')
-  const upiUri = upi ? `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(user?.name || 'SplitHalf User')}&cu=INR` : ''
-  const [showQr, setShowQr] = useState(false)
+  const [phone, setPhone] = useState(user?.phone_number || '')
 
   const handleLogout = async () => {
     await logout()
     onLogout()
   }
 
-  const handleSaveUpi = async () => {
-    if (!upi || !upi.includes('@')) return
+  const handleSavePhone = async () => {
+    if (!phone || phone.length < 10) return
     try {
-      await apiService.updateUPI(upi)
-      alert('UPI saved')
+      await apiService.updatePhone(phone)
+      alert('Mobile Number saved')
     } catch (e) {
-      alert('Failed to save UPI')
+      alert('Failed to save Mobile Number')
     }
   }
 
@@ -30,8 +28,8 @@ export default function ProfilePage({ onBack, onLogout }) {
     (async () => {
       try {
         const me = await apiService.getCurrentUser()
-        if (me?.upi_id && typeof me.upi_id === 'string') {
-          setUpi(me.upi_id)
+        if (me?.phone_number) {
+          setPhone(me.phone_number)
         }
       } catch { }
     })()
@@ -75,51 +73,34 @@ export default function ProfilePage({ onBack, onLogout }) {
             </div>
           </div>
 
-          {/* UPI Block */}
+          {/* Contact Details Block */}
           <div className="rounded-3xl border border-border bg-card p-5 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg sm:text-xl font-semibold">UPI for payments</h2>
+              <h2 className="text-lg sm:text-xl font-semibold">Contact Details</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              {/* Phone Number Section */}
               <div className="space-y-3">
-                <label className="text-xs text-muted-foreground">Your UPI ID</label>
+                <label className="text-xs text-muted-foreground">Mobile Number (For Payments)</label>
                 <div className="flex gap-2">
-                  <input value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="name@bank" className="input flex-1" />
-                  <button onClick={handleSaveUpi} disabled={!upi || !upi.includes('@')} className="btn btn-primary inline-flex items-center gap-2 px-3">
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Enter 10-digit number"
+                    type="tel"
+                    className="input flex-1 font-mono tracking-wide"
+                  />
+                  <button onClick={handleSavePhone} disabled={!phone || phone.length < 10} className="btn btn-primary inline-flex items-center gap-2 px-3">
                     <Save className="h-4 w-4" />
                     Save
                   </button>
                 </div>
-                {upi && (
+                {phone && (
                   <div className="flex items-center gap-4">
-                    <button onClick={() => navigator.clipboard.writeText(upi)} className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground">
-                      <Copy className="h-4 w-4" /> Copy UPI
+                    <button onClick={() => { navigator.clipboard.writeText(phone); alert('Number copied'); }} className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground">
+                      <Copy className="h-4 w-4" /> Copy Number
                     </button>
-                    <a href={`https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(upiUri)}`} download="upi-qr.png" className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground">
-                      <Download className="h-4 w-4" /> Download QR
-                    </a>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col items-center justify-center">
-                {upi ? (
-                  <div className="relative">
-                    <img alt="UPI QR" className="w-48 h-48 sm:w-56 sm:h-56 rounded-xl border border-border bg-background" src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`} />
-                    <button
-                      onClick={() => setShowQr(true)}
-                      aria-label="Open full screen"
-                      className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background shadow-lg ring-1 ring-white/20 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/60"
-                      title="Full screen"
-                    >
-                      <Maximize2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground">
-                    <div className="flex flex-col items-center gap-2">
-                      <QrCode className="h-6 w-6" />
-                      Add your UPI to generate QR
-                    </div>
+                    <p className="text-xs text-muted-foreground">Used for receiving payments</p>
                   </div>
                 )}
               </div>

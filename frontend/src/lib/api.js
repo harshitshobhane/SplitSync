@@ -15,13 +15,13 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token')
     const isPublicEndpoint = config.url.includes('/auth/verify')
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     } else if (!isPublicEndpoint) {
       console.warn('⚠️ API Request:', config.method?.toUpperCase(), config.url, '- No token (will fail if protected)')
     }
-    
+
     return config
   },
   (error) => Promise.reject(error)
@@ -77,6 +77,11 @@ export const apiService = {
 
   async updateUPI(upiId) {
     const response = await api.put('/auth/upi', { upi_id: upiId })
+    return response.data
+  },
+
+  async updatePhone(phoneNumber) {
+    const response = await api.put('/auth/phone', { phone_number: phoneNumber })
     return response.data
   },
 

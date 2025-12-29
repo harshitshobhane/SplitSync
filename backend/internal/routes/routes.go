@@ -57,6 +57,7 @@ func setupProtectedAuthRoutes(group *gin.RouterGroup, authHandler *handlers.Auth
 	{
 		protected.GET("/me", authHandler.GetCurrentUser)
 		protected.PUT("/upi", authHandler.UpdateUPI)
+		protected.PUT("/phone", authHandler.UpdatePhoneNumber)
 	}
 }
 
