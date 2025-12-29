@@ -15,9 +15,8 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     description: ''
   })
   const [showUPIModal, setShowUPIModal] = useState(false)
-  const [showQr, setShowQr] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState('upi')
   const [receiverPhone, setReceiverPhone] = useState('')
+
 
   const queryClient = useQueryClient()
   const { user } = useAuthContext()
@@ -115,6 +114,13 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   // Get receiver's Phone Number (the person receiving the payment)
   const receiverPhoneNum = formData.fromUser === 'person1' ? partnerPhone : currentUserPhone
   const receiverName = toName
+
+  // Pre-fill phone number when available
+  React.useEffect(() => {
+    if (receiverPhoneNum) {
+      setReceiverPhone(receiverPhoneNum)
+    }
+  }, [receiverPhoneNum])
 
   // Handle UPI payment - only opens the app, doesn't record transfer
   const handleUPIPayment = (app = 'universal') => {
@@ -534,40 +540,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                   </div>
                 </div>
 
-                {/* QR Code Toggle */}
-                <div className="mb-4">
-                  <button
-                    onClick={() => setShowQr(!showQr)}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-sm font-medium text-muted-foreground"
-                  >
-                    <QrCode className="h-4 w-4" />
-                    {showQr ? 'Hide QR Code' : 'Show QR Code to Scan'}
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showQr ? 'rotate-180' : ''}`} />
-                  </button>
 
-                  <AnimatePresence>
-                    {showQr && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl mt-3 border border-border/20 shadow-sm">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(generateUPIPaymentLink(receiverUPI, parseFloat(formData.amount), receiverName, formData.description || `Payment from ${fromName}`))}&bgcolor=ffffff`}
-                            alt="UPI QR Code"
-                            className="w-40 h-40 object-contain"
-                          />
-                          <p className="text-[10px] text-gray-400 mt-2 text-center max-w-[200px]">
-                            Scan with any UPI app on another device
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
 
                 {/* Record Transfer Section */}
                 <div className="p-4 bg-muted/30 dark:bg-muted/20 border border-border rounded-2xl">

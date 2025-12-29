@@ -112,22 +112,7 @@ export default function ProfilePage({ onBack, onLogout }) {
             <button onClick={handleLogout} className="px-5 py-3 rounded-xl bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90 text-sm sm:text-base">Logout</button>
           </div>
 
-          {/* QR Fullscreen Modal */}
-          <AnimatePresence>
-            {showQr && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
-                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} className="relative bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-xl">
-                  <button onClick={() => setShowQr(false)} className="absolute -top-3 -right-3 sm:top-2 sm:right-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-background border border-border hover:bg-accent">
-                    <X className="h-4 w-4" />
-                  </button>
-                  <img alt="UPI QR" className="w-[75vw] h-[75vw] max-w-[480px] max-h-[480px] rounded-xl border border-border bg-background object-contain" src={`https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(upiUri)}`} />
-                  {upi && (
-                    <div className="mt-3 text-center text-xs sm:text-sm text-muted-foreground break-all">{upi}</div>
-                  )}
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+
         </motion.div>
       </div>
     </div>

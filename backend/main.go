@@ -55,7 +55,7 @@ func main() {
 	router := gin.Default()
 
 	// Configure CORS
-	allowedOrigins := []string{"http://localhost:3000"}
+	allowedOrigins := []string{"http://localhost:3000", "http://localhost:3001"}
 	if cfg.Environment == "production" {
 		// Get allowed origins from environment variable (comma-separated)
 		if origins := os.Getenv("ALLOWED_ORIGINS"); origins != "" {
