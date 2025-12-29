@@ -7,7 +7,7 @@ import { apiService } from '../lib/api'
 export default function ProfilePage({ onBack, onLogout }) {
   const { user, logout } = useAuthContext()
   const [upi, setUpi] = useState(user?.upi_id || '')
-  const upiUri = upi ? `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(user?.name || 'SplitSync User')}&cu=INR` : ''
+  const upiUri = upi ? `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(user?.name || 'SplitHalf User')}&cu=INR` : ''
   const [showQr, setShowQr] = useState(false)
 
   const handleLogout = async () => {
@@ -33,7 +33,7 @@ export default function ProfilePage({ onBack, onLogout }) {
         if (me?.upi_id && typeof me.upi_id === 'string') {
           setUpi(me.upi_id)
         }
-      } catch {}
+      } catch { }
     })()
   }, [])
 

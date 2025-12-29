@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"splithalf-backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
-	"splitsync-backend/internal/utils"
 )
 
 // Logger creates a custom logger middleware with structured logging

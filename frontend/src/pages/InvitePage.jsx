@@ -21,7 +21,7 @@ const InvitePage = () => {
 
     // Store invitation token in localStorage
     localStorage.setItem('invitation_token', token)
-    
+
     // Check if user is already logged in
     const authToken = localStorage.getItem('auth_token')
     if (authToken) {
@@ -40,7 +40,7 @@ const InvitePage = () => {
       toast.success('Invitation accepted! You are now connected with your partner.')
       setStatus('success')
       setMessage('Invitation accepted successfully!')
-      
+
       // Redirect to dashboard after 2 seconds
       setTimeout(() => {
         navigate('/')
@@ -88,9 +88,9 @@ const InvitePage = () => {
             </div>
             <h1 className="text-2xl font-bold">Partner Invitation</h1>
             <p className="text-sm text-muted-foreground">
-              {message || 'You\'ve been invited to join SplitSync as a partner!'}
+              {message || 'You\'ve been invited to join SplitHalf as a partner!'}
             </p>
-            
+
             {!localStorage.getItem('auth_token') && (
               <div className="pt-4 space-y-3">
                 <p className="text-xs text-muted-foreground">

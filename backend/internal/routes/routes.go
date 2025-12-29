@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"splitsync-backend/internal/handlers"
-	"splitsync-backend/internal/middleware"
+	"splithalf-backend/internal/handlers"
+	"splithalf-backend/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,10 +21,10 @@ func SetupRoutes(
 ) {
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok", "message": "SplitSync API is running"})
+		c.JSON(200, gin.H{"status": "ok", "message": "SplitHalf API is running"})
 	})
 
-		// API v1 routes
+	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(v1, authHandler)

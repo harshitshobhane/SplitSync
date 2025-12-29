@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"splitsync-backend/internal/models"
+	"splithalf-backend/internal/models"
 )
 
 type SettingsHandler struct {

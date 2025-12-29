@@ -1,4 +1,4 @@
-module splitsync-backend
+module splithalf-backend
 
 go 1.24.0
 

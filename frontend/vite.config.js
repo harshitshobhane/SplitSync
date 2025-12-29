@@ -27,8 +27,8 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'vite.svg'],
       manifest: {
-        name: 'SplitSync - Expense Tracker',
-        short_name: 'SplitSync',
+        name: 'SplitHalf - Expense Tracker',
+        short_name: 'SplitHalf',
         description: 'Modern expense tracking app for couples',
         theme_color: '#0ea5e9',
         background_color: '#ffffff',

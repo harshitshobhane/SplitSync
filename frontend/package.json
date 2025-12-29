@@ -1,5 +1,5 @@
 {
-  "name": "splitsync-frontend",
+  "name": "splithalf-frontend",
   "version": "1.0.0",
   "description": "Modern expense tracking app with React and Tailwind CSS",
   "private": true,

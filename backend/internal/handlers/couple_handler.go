@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"splitsync-backend/internal/models"
+	"splithalf-backend/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"

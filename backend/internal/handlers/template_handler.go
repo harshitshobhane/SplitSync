@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"splitsync-backend/internal/models"
+	"splithalf-backend/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -310,4 +310,3 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Template deleted successfully"})
 }
-

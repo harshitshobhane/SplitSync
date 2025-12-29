@@ -84,7 +84,7 @@ export default function LoginPage({ onBack, onSuccess }) {
               Welcome Back
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Sign in to continue to SplitSync
+              Sign in to continue to SplitHalf
             </p>
           </div>
 

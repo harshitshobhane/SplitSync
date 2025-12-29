@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"splitsync-backend/internal/models"
+	"splithalf-backend/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -164,14 +164,14 @@ func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 	// Calculate from expenses only - sum up each person's share
 	for _, expense := range expenses {
 		totalSpent += expense.TotalAmount
-		
+
 		// Add each person's share (what they contributed/owe)
 		person1Paid += expense.Person1Share
 		person2Paid += expense.Person2Share
-		
+
 		categoryTotals[expense.Category] += expense.TotalAmount
 	}
-	
+
 	// Ensure non-negative values
 	if person1Paid < 0 {
 		person1Paid = 0
@@ -179,10 +179,10 @@ func (h *ReportHandler) GetMonthlyReport(c *gin.Context) {
 	if person2Paid < 0 {
 		person2Paid = 0
 	}
-	
+
 	// Validation: The sum should equal totalSpent (all expenses are split between the two people)
 	sumPaid := person1Paid + person2Paid
-	
+
 	// If there's a discrepancy due to rounding or calculation errors, normalize
 	if totalSpent > 0 && (sumPaid-totalSpent > 0.01 || sumPaid-totalSpent < -0.01) {
 		// Normalize to ensure person1Paid + person2Paid = totalSpent

@@ -9,9 +9,9 @@ const InstallPrompt = () => {
 
   useEffect(() => {
     // Check if already installed
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        window.navigator.standalone
-    
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone
+
     if (isStandalone) {
       return // Already installed, don't show
     }
@@ -22,24 +22,24 @@ const InstallPrompt = () => {
 
     // Check if dismissed in this session
     const dismissed = sessionStorage.getItem('pwa-install-dismissed')
-    
+
     if (!dismissed) {
       let deferredPromptEvent = null
-      
+
       // Listen for beforeinstallprompt event (Android/Chrome)
       const handler = (e) => {
         e.preventDefault()
         deferredPromptEvent = e
         setDeferredPrompt(e)
       }
-      
+
       window.addEventListener('beforeinstallprompt', handler)
-      
+
       // Show immediately on app start (sooner)
       const timer = setTimeout(() => {
         setShowPrompt(true)
       }, 500) // Reduced from 1500ms to 500ms for sooner display
-      
+
       return () => {
         window.removeEventListener('beforeinstallprompt', handler)
         clearTimeout(timer)
@@ -53,12 +53,12 @@ const InstallPrompt = () => {
       try {
         // Show the install prompt (this is synchronous, not async)
         deferredPrompt.prompt()
-        
+
         // Wait for the user to respond to the prompt
         const { outcome } = await deferredPrompt.userChoice
-        
+
         console.log(`User response to the install prompt: ${outcome}`)
-        
+
         if (outcome === 'accepted') {
           console.log('User accepted the install prompt')
           setShowPrompt(false)
@@ -68,7 +68,7 @@ const InstallPrompt = () => {
           console.log('User dismissed the install prompt')
           handleDismiss()
         }
-        
+
         // Clear the deferredPrompt so it can only be used once
         setDeferredPrompt(null)
       } catch (error) {
@@ -125,15 +125,15 @@ const InstallPrompt = () => {
 
             {/* Content */}
             <div className="text-center mb-6">
-              
+
               <h3 className="text-2xl font-bold text-foreground mb-1">
-                Install SplitSync
+                Install SplitHalf
               </h3>
               <p className="text-sm text-muted-foreground mb-3">
                 Expense Tracker
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Add SplitSync to your home screen for quick access and an app-like experience.
+                Add SplitHalf to your home screen for quick access and an app-like experience.
               </p>
             </div>
 

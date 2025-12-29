@@ -8,30 +8,30 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Environment     string
-	Port            string
-	MongoURI        string
-	JWTSecret       string
-	Database        string
-	LogLevel        string
-	RateLimit       int
-	FirebaseAPIKey  string
-	FirebaseProjectID string
+	Environment        string
+	Port               string
+	MongoURI           string
+	JWTSecret          string
+	Database           string
+	LogLevel           string
+	RateLimit          int
+	FirebaseAPIKey     string
+	FirebaseProjectID  string
 	FirebaseAuthDomain string
 }
 
 // Load creates a new Config instance with values from environment variables
 func Load() *Config {
 	return &Config{
-		Environment:         getEnv("ENVIRONMENT", "development"),
-		Port:             getEnv("PORT", "8080"),
-		MongoURI:         getEnv("MONGO_URI", ""),
-		JWTSecret:        getEnv("JWT_SECRET", ""),
-		Database:         getEnv("DATABASE_NAME", "splitsync"),
-		LogLevel:         getEnv("LOG_LEVEL", "info"),
-		RateLimit:        getEnvAsInt("RATE_LIMIT", 10),
-		FirebaseAPIKey:    getEnv("FIREBASE_API_KEY", ""),
-		FirebaseProjectID: getEnv("FIREBASE_PROJECT_ID", ""),
+		Environment:        getEnv("ENVIRONMENT", "development"),
+		Port:               getEnv("PORT", "8080"),
+		MongoURI:           getEnv("MONGO_URI", ""),
+		JWTSecret:          getEnv("JWT_SECRET", ""),
+		Database:           getEnv("DATABASE_NAME", "splithalf"),
+		LogLevel:           getEnv("LOG_LEVEL", "info"),
+		RateLimit:          getEnvAsInt("RATE_LIMIT", 10),
+		FirebaseAPIKey:     getEnv("FIREBASE_API_KEY", ""),
+		FirebaseProjectID:  getEnv("FIREBASE_PROJECT_ID", ""),
 		FirebaseAuthDomain: getEnv("FIREBASE_AUTH_DOMAIN", ""),
 	}
 }
@@ -64,4 +64,3 @@ func getEnvAsInt(key string, defaultValue int) int {
 	}
 	return defaultValue
 }
-

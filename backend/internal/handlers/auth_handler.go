@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"splitsync-backend/internal/models"
-	"splitsync-backend/internal/utils"
+	"splithalf-backend/internal/models"
+	"splithalf-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"

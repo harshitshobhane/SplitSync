@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"splitsync-backend/internal/config"
-	"splitsync-backend/internal/database"
-	"splitsync-backend/internal/handlers"
-	"splitsync-backend/internal/middleware"
-	"splitsync-backend/internal/routes"
-	"splitsync-backend/internal/utils"
+	"splithalf-backend/internal/config"
+	"splithalf-backend/internal/database"
+	"splithalf-backend/internal/handlers"
+	"splithalf-backend/internal/middleware"
+	"splithalf-backend/internal/routes"
+	"splithalf-backend/internal/utils"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

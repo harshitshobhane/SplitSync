@@ -17,7 +17,7 @@ export default function VerifyEmailPage({ email, onBack, onSuccess }) {
       const verified = await checkEmailVerification()
       if (verified) {
         setShowSuccess(true)
-        toast.success('Email verified successfully! Welcome to SplitSync!')
+        toast.success('Email verified successfully! Welcome to SplitHalf!')
         // Wait a moment to show success animation, then redirect
         setTimeout(() => {
           onSuccess()
@@ -66,7 +66,7 @@ export default function VerifyEmailPage({ email, onBack, onSuccess }) {
               Email Verified!
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground mb-8">
-              Your email has been successfully verified. Welcome to SplitSync!
+              Your email has been successfully verified. Welcome to SplitHalf!
             </p>
             <motion.div
               animate={{ opacity: [1, 0.7, 1] }}
@@ -133,7 +133,7 @@ export default function VerifyEmailPage({ email, onBack, onSuccess }) {
                       <li>Check your inbox at <strong className="text-foreground">{email}</strong></li>
                       <li>Click the verification link in the email</li>
                       <li>Return here and click the button below</li>
-                      <li>Start using SplitSync!</li>
+                      <li>Start using SplitHalf!</li>
                     </ol>
                   </div>
                 </div>

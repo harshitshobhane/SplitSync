@@ -10,7 +10,7 @@
  * @param {string} description - Payment description/note
  * @returns {string} UPI payment URI
  */
-export function generateUPIPaymentLink(upiId, amount, name = 'SplitSync Payment', description = '') {
+export function generateUPIPaymentLink(upiId, amount, name = 'SplitHalf Payment', description = '') {
   if (!upiId || !upiId.includes('@')) {
     return null
   }
@@ -34,27 +34,27 @@ export function generateUPIPaymentLink(upiId, amount, name = 'SplitSync Payment'
  * @param {string} description - Payment description
  * @returns {Object} Object with different UPI app links
  */
-export function generateUPIAppLinks(upiId, amount, name = 'SplitSync Payment', description = '') {
+export function generateUPIAppLinks(upiId, amount, name = 'SplitHalf Payment', description = '') {
   const baseLink = generateUPIPaymentLink(upiId, amount, name, description)
-  
+
   if (!baseLink) return null
 
   return {
     // Universal UPI link (opens default UPI app)
     universal: baseLink,
-    
+
     // PhonePe
     phonepe: `phonepe://pay?${baseLink.split('?')[1]}`,
-    
+
     // Paytm
     paytm: `paytmmp://pay?${baseLink.split('?')[1]}`,
-    
+
     // Google Pay
     googlepay: `tez://pay?${baseLink.split('?')[1]}`,
-    
+
     // BHIM UPI
     bhim: `bhim://pay?${baseLink.split('?')[1]}`,
-    
+
     // Amazon Pay
     amazonpay: `amazonpay://pay?${baseLink.split('?')[1]}`
   }
@@ -70,18 +70,18 @@ export function generateUPIAppLinks(upiId, amount, name = 'SplitSync Payment', d
  */
 export function openUPIPayment(upiId, amount, name, description, app = 'universal') {
   const links = generateUPIAppLinks(upiId, amount, name, description)
-  
+
   if (!links) {
     return false
   }
 
   const link = links[app] || links.universal
-  
+
   if (link) {
     window.location.href = link
     return true
   }
-  
+
   return false
 }
 

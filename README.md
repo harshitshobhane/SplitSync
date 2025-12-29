@@ -1,4 +1,4 @@
-# SplitSync - Modern Expense Tracker
+# SplitHalf - Modern Expense Tracker
 
 A beautiful, modern expense tracking app built with React and Go, designed for couples to easily split expenses and track shared finances.
 

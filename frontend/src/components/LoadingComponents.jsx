@@ -18,14 +18,14 @@ const LoadingSpinner = ({ size = 'md', text = 'Loading...', className = '' }) =>
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className={`flex flex-col items-center justify-center space-y-3 ${className}`}
     >
       <Loader2 className={`${sizeClasses[size]} text-blue-600 animate-spin`} />
       {text && (
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -44,9 +44,8 @@ const SkeletonLoader = ({ className = '', lines = 3 }) => {
       {Array.from({ length: lines }).map((_, index) => (
         <div
           key={index}
-          className={`h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2 ${
-            index === lines - 1 ? 'w-3/4' : 'w-full'
-          }`}
+          className={`h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2 ${index === lines - 1 ? 'w-3/4' : 'w-full'
+            }`}
         />
       ))}
     </div>
@@ -78,7 +77,7 @@ const PageLoader = () => {
       >
         <Loader2 className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-          Loading SplitSync
+          Loading SplitHalf
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
           Please wait while we load your data...
