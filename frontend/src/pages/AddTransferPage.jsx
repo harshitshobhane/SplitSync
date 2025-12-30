@@ -31,9 +31,11 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     }
   )
 
-  // Get Phone Numbers
+  // Get Phone Numbers & UPI IDs
   const currentUserPhone = user?.phone_number || ''
+  const currentUserUPI = user?.upi_id || ''
   const partnerPhone = coupleInfo?.partner?.phone_number || ''
+  const partnerUPI = coupleInfo?.partner?.upi_id || ''
 
   // Calculate balance info
   const person1Net = balance.person1Net || 0
@@ -111,8 +113,9 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   const fromName = formData.fromUser === 'person1' ? names.person1Name : names.person2Name
   const toName = toUser === 'person1' ? names.person1Name : names.person2Name
 
-  // Get receiver's Phone Number (the person receiving the payment)
+  // Get receiver's Phone Number & UPI ID (the person receiving the payment)
   const receiverPhoneNum = formData.fromUser === 'person1' ? partnerPhone : currentUserPhone
+  const receiverUPI = formData.fromUser === 'person1' ? partnerUPI : currentUserUPI
   const receiverName = toName
 
   // Pre-fill phone number when available
@@ -133,19 +136,32 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     const description = formData.description || `Payment from ${fromName}`
     const targetPhone = receiverPhone || receiverPhoneNum
 
-    // If we have a phone number but no explicit VPA, copy the number to clipboard
-    // This allows the user to easily paste it in the "Pay to Number" section of the app
+    // If we have a UPI ID, we can generate a perfect deep link
+    // If not, we fall back to the "Copy Phone Number" method
+    const targetUPI = receiverUPI // Prefer the valid VPA if available inside the app data
+
+    if (targetUPI && targetUPI.includes('@')) {
+      // Best Case: We have a VPA. Open app with pre-filled data.
+      const success = openUPIPayment(targetUPI, transferAmount, receiverName, description, app)
+      if (success) {
+        toast.success(`Opening ${app === 'universal' ? 'UPI app' : app} with pre-filled amount...`)
+      } else {
+        toast.error('Failed to open UPI app') // Should not happen with our util fix
+      }
+      return
+    }
+
+    // Fallback Case: No VPA. Copy number and open app.
     if (targetPhone) {
       navigator.clipboard.writeText(targetPhone)
-        .then(() => toast.success('Phone number copied to clipboard'))
-        .catch(() => { }) // Ignore copy errors
+        .then(() => toast.success('Phone number copied - Paste in app'))
+        .catch(() => { })
     }
 
     const success = openUPIPayment('', transferAmount, receiverName, description, app)
 
     if (success) {
-      toast.success(`Opening ${app === 'universal' ? 'UPI app' : app}... Paste number to pay.`)
-      // Keep modal open so user can record after payment
+      toast.success(`Opening ${app}... Paste payment details manually.`)
     } else {
       toast.error('Failed to open UPI payment')
     }

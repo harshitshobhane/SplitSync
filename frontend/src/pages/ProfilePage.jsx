@@ -7,6 +7,7 @@ import { apiService } from '../lib/api'
 export default function ProfilePage({ onBack, onLogout }) {
   const { user, logout } = useAuthContext()
   const [phone, setPhone] = useState(user?.phone_number || '')
+  const [upiId, setUpiId] = useState(user?.upi_id || '')
 
   const handleLogout = async () => {
     await logout()
@@ -23,6 +24,16 @@ export default function ProfilePage({ onBack, onLogout }) {
     }
   }
 
+  const handleSaveUPI = async () => {
+    if (!upiId || !upiId.includes('@')) return
+    try {
+      await apiService.updateUPI(upiId)
+      alert('UPI ID saved')
+    } catch (e) {
+      alert('Failed to save UPI ID')
+    }
+  }
+
   // Ensure UPI/QR always reflect server value on open
   useEffect(() => {
     (async () => {
@@ -30,6 +41,9 @@ export default function ProfilePage({ onBack, onLogout }) {
         const me = await apiService.getCurrentUser()
         if (me?.phone_number) {
           setPhone(me.phone_number)
+        }
+        if (me?.upi_id) {
+          setUpiId(me.upi_id)
         }
       } catch { }
     })()
@@ -78,7 +92,7 @@ export default function ProfilePage({ onBack, onLogout }) {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg sm:text-xl font-semibold">Contact Details</h2>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Phone Number Section */}
               <div className="space-y-3">
                 <label className="text-xs text-muted-foreground">Mobile Number (For Payments)</label>
@@ -101,6 +115,32 @@ export default function ProfilePage({ onBack, onLogout }) {
                       <Copy className="h-4 w-4" /> Copy Number
                     </button>
                     <p className="text-xs text-muted-foreground">Used for receiving payments</p>
+                  </div>
+                )}
+              </div>
+
+              {/* UPI ID Section */}
+              <div className="space-y-3 pt-4 border-t border-border">
+                <label className="text-xs text-muted-foreground">UPI ID (For Auto-filled Payments)</label>
+                <div className="flex gap-2">
+                  <input
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    placeholder="username@bank (e.g. name@oksbi)"
+                    type="text"
+                    className="input flex-1 font-mono tracking-wide"
+                  />
+                  <button onClick={handleSaveUPI} disabled={!upiId || !upiId.includes('@')} className="btn btn-primary inline-flex items-center gap-2 px-3">
+                    <Save className="h-4 w-4" />
+                    Save
+                  </button>
+                </div>
+                {upiId && (
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => { navigator.clipboard.writeText(upiId); alert('UPI ID copied'); }} className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground">
+                      <Copy className="h-4 w-4" /> Copy UPI ID
+                    </button>
+                    <p className="text-xs text-muted-foreground">Enables 1-click payments</p>
                   </div>
                 )}
               </div>
