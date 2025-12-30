@@ -161,60 +161,37 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
   }
 
-  // Full-auto UPI Payment with pre-filled details
-  const handleUPIPayment = (app = 'universal') => {
+  // SAFE UPI LINK GENERATOR (No programmatic redirects - security best practice)
+  // Returns deep link string for use in <a href>, NOT window.location.href
+  // This prevents "malicious redirect" warnings in Paytm/browser security
+  const generateSafeUPILink = (app = 'universal') => {
     const transferAmount = parseFloat(formData.amount)
-    if (!transferAmount || transferAmount <= 0) {
-      toast.error('Enter a valid amount')
-      return
-    }
+    if (!transferAmount || transferAmount <= 0) return null
 
-    // Copy amount to clipboard
-    navigator.clipboard.writeText(transferAmount.toString())
-
-    let deepLink = ''
     const description = formData.description || `Payment from ${fromName}`
 
     if (paymentMethod === 'upi' && receiverUPI) {
-      // UPI ID deep links WITHOUT amount
+      // Standard UPI deep link (works across all apps)
       const upiParams = `pa=${receiverUPI}&pn=${receiverName}&cu=INR&tn=${encodeURIComponent(description)}`
 
-      switch (app) {
-        case 'phonepe':
-          deepLink = `phonepe://pay?${upiParams}`
-          break
-        case 'googlepay':
-          deepLink = `tez://upi/pay?${upiParams}`
-          break
-        case 'paytm':
-          deepLink = `paytmmp://pay?${upiParams}`
-          break
-        default:
-          deepLink = `upi://pay?${upiParams}`
+      const links = {
+        phonepe: `phonepe://pay?${upiParams}`,
+        googlepay: `tez://upi/pay?${upiParams}`,
+        paytm: `paytmmp://pay?${upiParams}`,
+        universal: `upi://pay?${upiParams}`
       }
+      return links[app] || links.universal
     } else if (receiverPhoneNum) {
-      // Phone number deep links
-      switch (app) {
-        case 'phonepe':
-          deepLink = `phonepe://pay?pn=${receiverName}&mc=0000&tn=${encodeURIComponent(description)}&cu=INR&mn=${receiverPhoneNum}`
-          break
-        case 'paytm':
-          deepLink = `paytmmp://pay?featuretype=sendmoney&recipient=${receiverPhoneNum}`
-          break
-        case 'googlepay':
-          deepLink = `tez://upi/pay?pn=${receiverName}&cu=INR`
-          break
-        default:
-          deepLink = `upi://pay?pn=${receiverName}&cu=INR`
+      // Phone number flows (legacy, less reliable)
+      const links = {
+        phonepe: `phonepe://pay?pn=${receiverName}&mc=0000&tn=${encodeURIComponent(description)}&cu=INR&mn=${receiverPhoneNum}`,
+        paytm: `paytmmp://pay?featuretype=sendmoney&recipient=${receiverPhoneNum}`,
+        googlepay: `tez://upi/pay?pn=${receiverName}&cu=INR`,
+        universal: `upi://pay?pn=${receiverName}&cu=INR`
       }
+      return links[app] || links.universal
     }
-
-    if (deepLink) {
-      window.location.href = deepLink
-      toast.success(`₹${transferAmount} copied - paste in amount field`, { duration: 3000 })
-    } else {
-      toast.error('Payment details missing')
-    }
+    return null
   }
 
   // Handle recording transfer after UPI payment
@@ -570,76 +547,97 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                     </div>
                   </div>
 
-                  {/* Hidden QR for Download generation on mobile */}
-                  <div className="hidden">
-                    <QRCode
-                      id="payment-qr-code"
-                      value={generateUPIPaymentLink(receiverUPI || 'fallback', parseFloat(formData.amount) || 0, receiverName, formData.description)}
-                      size={512}
-                    />
-                  </div>
+                  {/* QR Code - PRIMARY PAYMENT METHOD (Mobile Only) */}
+                  <div className="md:hidden">
+                    {receiverUPI && paymentMethod === 'upi' ? (
+                      <div className="bg-white p-4 rounded-xl mb-4">
+                        <QRCode
+                          value={generateUPIPaymentLink(receiverUPI, parseFloat(formData.amount) || 0, receiverName, formData.description)}
+                          size={200}
+                          className="mx-auto"
+                        />
+                        <p className="text-xs text-center text-gray-600 mt-3">Scan with any UPI app to pay</p>
+                      </div>
+                    ) : null}
 
-                  {/* UPI App Selection - Mobile Only */}
-                  <div className="space-y-3 mb-6 md:hidden">
-                    {/* Default App */}
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleUPIPayment('universal')}
-                      className="w-full p-4 rounded-2xl bg-foreground text-background font-semibold flex items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all border border-border/10"
-                    >
-                      <Smartphone className="h-5 w-5" />
-                      <span className="tracking-wide">Open Default UPI App</span>
-                    </motion.button>
-
-                    {/* App Grid */}
-                    <div className="grid grid-cols-3 gap-2.5">
-                      {/* PhonePe */}
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleUPIPayment('phonepe')}
-                        className="p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white flex flex-col items-center justify-center gap-2 transition-colors"
-                      >
-                        <Smartphone className="h-5 w-5" />
-                        <span className="text-xs font-semibold">PhonePe</span>
-                      </motion.button>
-
-                      {/* Google Pay */}
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleUPIPayment('googlepay')}
-                        className="p-4 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#34A853] hover:from-[#3367D6] hover:to-[#2d8e47] text-white flex flex-col items-center justify-center gap-2 transition-all"
-                      >
-                        <span className="text-xl font-bold">G</span>
-                        <span className="text-xs font-semibold">GPay</span>
-                      </motion.button>
-
-                      {/* Paytm */}
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleUPIPayment('paytm')}
-                        className="p-4 rounded-xl bg-[#00BAF2] hover:bg-[#0095c7] text-white flex flex-col items-center justify-center gap-2 transition-colors"
-                      >
-                        <Wallet className="h-5 w-5" />
-                        <span className="text-xs font-semibold">Paytm</span>
-                      </motion.button>
-                    </div>
                     {/* Download QR Button */}
-                    {receiverUPI && (
+                    {receiverUPI && paymentMethod === 'upi' && (
                       <motion.button
                         whileTap={{ scale: 0.97 }}
                         onClick={handleDownloadQR}
-                        className="w-full py-3 text-sm font-medium bg-muted hover:bg-accent text-foreground rounded-xl flex items-center justify-center gap-2 transition-colors border border-border"
+                        className="w-full py-3 mb-3 text-sm font-medium bg-muted hover:bg-accent text-foreground rounded-xl flex items-center justify-center gap-2 transition-colors border border-border"
                       >
                         <Download className="h-4 w-4" />
-                        Download QR & Scan from Gallery
+                        Download QR for Gallery Scan
                       </motion.button>
                     )}
+                  </div>
+
+                  {/* SAFE UPI APP LINKS - User-triggered only (No auto-redirects) */}
+                  {/* Using <a> tags instead of onClick to avoid browser security blocks */}
+                  <div className="space-y-3 mb-6">
+                    <p className="text-xs text-center text-muted-foreground mb-2">
+                      Or open UPI app directly:
+                    </p>
+
+                    {/* App Grid - Safe Anchor Tags */}
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {/* PhonePe */}
+                      <a
+                        href={generateSafeUPILink('phonepe')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white text-center transition-colors no-underline"
+                        onClick={(e) => {
+                          if (!generateSafeUPILink('phonepe')) {
+                            e.preventDefault()
+                            toast.error('Enter amount first')
+                          }
+                        }}
+                      >
+                        <Smartphone className="h-5 w-5 mx-auto mb-1" />
+                        <span className="text-xs font-semibold block">PhonePe</span>
+                      </a>
+
+                      {/* Google Pay */}
+                      <a
+                        href={generateSafeUPILink('googlepay')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-4 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#34A853] hover:from-[#3367D6] hover:to-[#2d8e47] text-white text-center transition-all no-underline"
+                        onClick={(e) => {
+                          if (!generateSafeUPILink('googlepay')) {
+                            e.preventDefault()
+                            toast.error('Enter amount first')
+                          }
+                        }}
+                      >
+                        <span className="text-xl font-bold block">G</span>
+                        <span className="text-xs font-semibold block">GPay</span>
+                      </a>
+
+                      {/* Paytm */}
+                      <a
+                        href={generateSafeUPILink('paytm')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-4 rounded-xl bg-[#00BAF2] hover:bg-[#0095c7] text-white text-center transition-colors no-underline"
+                        onClick={(e) => {
+                          if (!generateSafeUPILink('paytm')) {
+                            e.preventDefault()
+                            toast.error('Enter amount first')
+                          }
+                        }}
+                      >
+                        <Wallet className="h-5 w-5 mx-auto mb-1" />
+                        <span className="text-xs font-semibold block">Paytm</span>
+                      </a>
+                    </div>
 
                     <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
                       {paymentMethod === 'upi'
-                        ? "Tap an app to pay. Having errors? Download QR and scan from gallery."
-                        : "App will open. Paste the copied number to pay."}
+                        ? "Tap app → Verify details → Enter UPI PIN → Pay"
+                        : "Paste number manually if not pre-filled"}
                     </p>
                   </div>
 
