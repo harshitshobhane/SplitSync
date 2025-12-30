@@ -295,7 +295,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           <label className="text-sm font-medium">Amount</label>
         </div>
 
-        <div className="bg-card border border-border rounded-3xl p-4">
+        <div className="bg-card border border-border rounded-3xl p-4 transition-all focus-within:ring-4 focus-within:ring-primary/10 focus-within:border-primary/50">
           <div className="flex items-center gap-3">
             <span className="text-2xl font-bold text-foreground">
               {getCurrencySymbol(currency)}
@@ -307,7 +307,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               placeholder="0.00"
               step="0.01"
               min="0.01"
-              className="flex-1 text-2xl font-bold bg-transparent border-none outline-none focus:outline-none text-foreground placeholder:text-muted-foreground/50"
+              className="flex-1 text-2xl font-bold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
               required
             />
           </div>
