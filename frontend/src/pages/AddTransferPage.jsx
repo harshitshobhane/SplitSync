@@ -176,9 +176,12 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       // Paytm is stricter - remove amount to avoid security blocks
       const paytmString = `upi://pay?pa=${receiverUPI}&pn=${receiverName}&cu=INR&mode=02`
 
+      // Google Pay uses different scheme
+      const gpayString = `tez://upi/pay?pa=${receiverUPI}&pn=${receiverName}&am=${transferAmount}&cu=INR&mode=02`
+
       const links = {
         phonepe: upiString,
-        googlepay: upiString,
+        googlepay: gpayString, // Google Pay specific scheme
         paytm: paytmString, // No amount for Paytm
         universal: upiString
       }
