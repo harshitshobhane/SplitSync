@@ -161,7 +161,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
   }
 
-  // Simplified Stake-style UPI Payment (No complex deep links)
+  // Full-auto UPI Payment with pre-filled details
   const handleUPIPayment = (app = 'universal') => {
     const transferAmount = parseFloat(formData.amount)
     if (!transferAmount || transferAmount <= 0) {
@@ -169,36 +169,49 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       return
     }
 
-    const paymentInfo = paymentMethod === 'upi' && receiverUPI
-      ? `UPI: ${receiverUPI}\nAmount: ₹${transferAmount}`
-      : `Phone: ${receiverPhoneNum}\nAmount: ₹${transferAmount}`
+    let deepLink = ''
+    const description = formData.description || `Payment from ${fromName}`
 
-    // Copy payment info to clipboard
-    navigator.clipboard.writeText(paymentInfo)
-      .then(() => {
-        // Simple app launchers (no pre-fill parameters)
-        const appLinks = {
-          phonepe: 'phonepe://',
-          googlepay: 'tez://',
-          paytm: 'paytmmp://',
-          universal: 'upi://pay'
-        }
+    if (paymentMethod === 'upi' && receiverUPI) {
+      // UPI ID deep links
+      const upiParams = `pa=${receiverUPI}&pn=${receiverName}&am=${transferAmount}&cu=INR&tn=${encodeURIComponent(description)}`
 
-        const link = appLinks[app] || appLinks.universal
-        window.location.href = link
+      switch (app) {
+        case 'phonepe':
+          deepLink = `phonepe://pay?${upiParams}`
+          break
+        case 'googlepay':
+          deepLink = `tez://upi/pay?${upiParams}`
+          break
+        case 'paytm':
+          deepLink = `paytmmp://pay?${upiParams}`
+          break
+        default:
+          deepLink = `upi://pay?${upiParams}`
+      }
+    } else if (receiverPhoneNum) {
+      // Phone number deep links
+      switch (app) {
+        case 'phonepe':
+          deepLink = `phonepe://pay?pn=${receiverName}&mc=0000&tid=&tr=&tn=${encodeURIComponent(description)}&am=${transferAmount}&mam=null&cu=INR&mn=${receiverPhoneNum}`
+          break
+        case 'paytm':
+          deepLink = `paytmmp://pay?featuretype=sendmoney&recipient=${receiverPhoneNum}&amount=${transferAmount}`
+          break
+        case 'googlepay':
+          deepLink = `tez://upi/pay?mc=0000&pn=${receiverName}&am=${transferAmount}&cu=INR`
+          break
+        default:
+          deepLink = `upi://pay?pn=${receiverName}&am=${transferAmount}&cu=INR`
+      }
+    }
 
-        // Show helpful instructions
-        const appName = app === 'universal' ? 'UPI app' : app.charAt(0).toUpperCase() + app.slice(1)
-        toast.success(
-          `${appName} opening!\n\n` +
-          `Payment info copied.\n` +
-          `Tap "New Payment" → Paste ${paymentMethod === 'upi' ? 'UPI ID' : 'Number'} → Enter amount`,
-          { duration: 6000 }
-        )
-      })
-      .catch(() => {
-        toast.error('Failed to copy payment info')
-      })
+    if (deepLink) {
+      window.location.href = deepLink
+      toast.success('Opening app...', { duration: 2000 })
+    } else {
+      toast.error('Payment details missing')
+    }
   }
 
   // Handle recording transfer after UPI payment
