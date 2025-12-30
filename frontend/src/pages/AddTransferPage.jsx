@@ -161,7 +161,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
   }
 
-  // Handle UPI payment - only opens the app, doesn't record transfer
+  // Simplified Stake-style UPI Payment (No complex deep links)
   const handleUPIPayment = (app = 'universal') => {
     const transferAmount = parseFloat(formData.amount)
     if (!transferAmount || transferAmount <= 0) {
@@ -169,48 +169,36 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       return
     }
 
-    const description = formData.description || `Payment from ${fromName}`
-    const targetUPI = receiverUPI
+    const paymentInfo = paymentMethod === 'upi' && receiverUPI
+      ? `UPI: ${receiverUPI}\nAmount: ₹${transferAmount}`
+      : `Phone: ${receiverPhoneNum}\nAmount: ₹${transferAmount}`
 
-    // SMART PAY: If method is 'number', try direct mobile deep links first
-    if (paymentMethod === 'number' && receiverPhoneNum) {
-      const mobileLinks = generateMobileDeepLinks(receiverPhoneNum)
-      const link = mobileLinks[app] || mobileLinks.universal
+    // Copy payment info to clipboard
+    navigator.clipboard.writeText(paymentInfo)
+      .then(() => {
+        // Simple app launchers (no pre-fill parameters)
+        const appLinks = {
+          phonepe: 'phonepe://',
+          googlepay: 'tez://',
+          paytm: 'paytmmp://',
+          universal: 'upi://pay'
+        }
 
-      if (link) {
+        const link = appLinks[app] || appLinks.universal
         window.location.href = link
-        toast.success(`Opening ${app}...`)
-        // Fallback clipboard copy just in case
-        navigator.clipboard.writeText(receiverPhoneNum)
-        return
-      }
-    }
 
-    if (targetUPI && targetUPI.includes('@')) {
-      // Best Case: We have a VPA. Open app with pre-filled data.
-      const success = openUPIPayment(targetUPI, transferAmount, receiverName, description, app)
-      if (success) {
-        toast.success(`Opening ${app === 'universal' ? 'UPI app' : app} with pre-filled amount...`)
-      } else {
-        toast.error('Failed to open UPI app') // Should not happen with our util fix
-      }
-      return
-    }
-
-    // Fallback Case: No VPA. Copy number and open app.
-    if (receiverPhoneNum) {
-      navigator.clipboard.writeText(receiverPhoneNum)
-        .then(() => toast.success('Phone number copied - Paste in app'))
-        .catch(() => { })
-    }
-
-    const success = openUPIPayment('', transferAmount, receiverName, description, app)
-
-    if (success) {
-      toast.success(`Opening ${app}... Paste payment details manually.`)
-    } else {
-      toast.error('Failed to open UPI payment')
-    }
+        // Show helpful instructions
+        const appName = app === 'universal' ? 'UPI app' : app.charAt(0).toUpperCase() + app.slice(1)
+        toast.success(
+          `${appName} opening!\n\n` +
+          `Payment info copied.\n` +
+          `Tap "New Payment" → Paste ${paymentMethod === 'upi' ? 'UPI ID' : 'Number'} → Enter amount`,
+          { duration: 6000 }
+        )
+      })
+      .catch(() => {
+        toast.error('Failed to copy payment info')
+      })
   }
 
   // Handle recording transfer after UPI payment
