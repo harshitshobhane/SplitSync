@@ -16,6 +16,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   })
   const [showUPIModal, setShowUPIModal] = useState(false)
   const [receiverPhone, setReceiverPhone] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('number') // 'number' or 'upi'
 
 
   const queryClient = useQueryClient()
@@ -118,12 +119,18 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   const receiverUPI = formData.fromUser === 'person1' ? partnerUPI : currentUserUPI
   const receiverName = toName
 
-  // Pre-fill phone number when available
+  // Pre-fill phone number when available and set default payment method
   React.useEffect(() => {
     if (receiverPhoneNum) {
       setReceiverPhone(receiverPhoneNum)
     }
-  }, [receiverPhoneNum])
+    // Default to UPI if available, else number
+    if (receiverUPI) {
+      setPaymentMethod('upi')
+    } else {
+      setPaymentMethod('number')
+    }
+  }, [receiverPhoneNum, receiverUPI])
 
   // Handle UPI payment - only opens the app, doesn't record transfer
   const handleUPIPayment = (app = 'universal') => {
@@ -431,111 +438,129 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                 </div>
 
 
-
                 {/* Payment Details Card */}
-                <div className="mb-6 p-4 bg-muted/30 dark:bg-muted/20 border border-border rounded-2xl">
-                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Paying to</p>
-                  <p className="text-lg font-bold text-foreground mb-1">{receiverName}</p>
+                <div className="mb-6 p-4 bg-muted/30 dark:bg-muted/20 border border-border rounded-2xl relative overflow-hidden">
 
-                  {/* Mobile Number Section */}
-                  <div className="flex flex-col gap-2 mb-3">
-                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                      Mobile Number Linked to UPI
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="tel"
-                        placeholder="Enter mobile number"
-                        value={receiverPhoneNum || receiverPhone}
-                        onChange={(e) => setReceiverPhone(e.target.value)}
-                        readOnly={!!receiverPhoneNum}
-                        className={`text-sm bg-background/50 px-3 py-2 rounded-lg border border-border/50 outline-none w-full font-mono placeholder:text-muted-foreground/50 ${receiverPhoneNum ? 'opacity-80' : ''}`}
-                      />
-                      {(receiverPhoneNum || receiverPhone) && (
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(receiverPhoneNum || receiverPhone); toast.success('Number Copied'); }}
-                          className="p-2 hover:bg-background rounded-lg transition-colors border border-transparent hover:border-border/50 bg-background/50"
-                          title="Copy Number"
-                        >
-                          <Copy className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      )}
+                  {/* Method Toggle */}
+                  {receiverUPI && receiverPhoneNum && (
+                    <div className="flex bg-background/50 p-1 rounded-xl border border-border/40 mb-4 relative z-10">
+                      <button
+                        onClick={() => setPaymentMethod('upi')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${paymentMethod === 'upi' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                      >
+                        <QrCode className="h-3.5 w-3.5" />
+                        UPI ID
+                      </button>
+                      <button
+                        onClick={() => setPaymentMethod('number')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${paymentMethod === 'number' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        Number
+                      </button>
                     </div>
-                    {!receiverPhoneNum && (
-                      <p className="text-[10px] text-muted-foreground">
-                        Enter the receiver's number manually if not saved in their profile.
-                      </p>
-                    )}
+                  )}
+
+                  <div className="text-center mb-4">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Paying</p>
+                    <p className="text-xl font-bold text-foreground">{receiverName}</p>
                   </div>
 
-                  <div className="pt-3 border-t border-border">
-                    <p className="text-2xl font-extrabold text-foreground">{formatCurrency(parseFloat(formData.amount), currency)}</p>
+                  {/* Dynamic Section based on Method */}
+                  <div className="bg-background border border-border/50 rounded-xl p-3 mb-4 flex items-center gap-3 shadow-sm">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${paymentMethod === 'upi' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20' : 'bg-blue-100 text-blue-600 dark:bg-blue-500/20'}`}>
+                      {paymentMethod === 'upi' ? <QrCode className="h-5 w-5" /> : <Phone className="h-5 w-5" />}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
+                        {paymentMethod === 'upi' ? 'Linked UPI ID' : 'Mobile Number'}
+                      </p>
+                      <p className="text-sm font-mono font-medium truncate">
+                        {paymentMethod === 'upi' ? receiverUPI : (receiverPhoneNum || receiverPhone || 'Not set')}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(paymentMethod === 'upi' ? receiverUPI : (receiverPhoneNum || receiverPhone));
+                        toast.success(`${paymentMethod === 'upi' ? 'UPI ID' : 'Number'} Copied`);
+                      }}
+                      className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between items-center px-2">
+                    <p className="text-xs text-muted-foreground">Amount</p>
+                    <p className="text-2xl font-extrabold text-foreground tracking-tight">{formatCurrency(parseFloat(formData.amount), currency)}</p>
                   </div>
                 </div>
 
                 {/* UPI App Selection */}
-                <div className="space-y-2.5 mb-6">
-                  <p className="text-sm font-semibold text-foreground mb-3">Choose UPI app:</p>
-
-                  {/* Universal UPI (Default) */}
+                <div className="space-y-3 mb-6">
+                  {/* Default App */}
                   <motion.button
                     whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => handleUPIPayment('universal')}
-                    className="w-full p-4 rounded-2xl bg-foreground text-background font-semibold flex items-center justify-center gap-3 transition-all border border-border/20"
+                    className="w-full p-4 rounded-2xl bg-foreground text-background font-semibold flex items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all border border-border/10"
                   >
                     <Smartphone className="h-5 w-5" />
-                    Open Default UPI App
+                    <span className="tracking-wide">Open Default UPI App</span>
                   </motion.button>
 
-                  {/* UPI App Grid */}
-                  <div className="grid grid-cols-2 gap-2.5">
+                  {/* App Grid */}
+                  <div className="grid grid-cols-3 gap-3">
                     {/* PhonePe */}
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
+                      whileHover={{ scale: 1.02, translateY: -2 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => handleUPIPayment('phonepe')}
-                      className="p-3.5 rounded-2xl bg-[#5F259F] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#5F259F]/20"
+                      className="p-3 rounded-2xl bg-[#5F259F] text-white flex flex-col items-center justify-center gap-1.5 shadow-md shadow-[#5F259F]/20 border border-white/10"
                     >
-                      <span className="text-2xl">📱</span>
-                      <span className="text-sm">PhonePe</span>
-                    </motion.button>
-
-                    {/* Paytm */}
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      onClick={() => handleUPIPayment('paytm')}
-                      className="p-3.5 rounded-2xl bg-[#00BAF2] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#00BAF2]/20"
-                    >
-                      <span className="text-2xl">💳</span>
-                      <span className="text-sm">Paytm</span>
+                      <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <Smartphone className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="text-[10px] font-bold tracking-wide">PhonePe</span>
                     </motion.button>
 
                     {/* Google Pay */}
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
+                      whileHover={{ scale: 1.02, translateY: -2 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => handleUPIPayment('googlepay')}
-                      className="p-3.5 rounded-2xl bg-[#4285F4] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#4285F4]/20"
+                      className="p-3 rounded-2xl bg-[#1f1f1f] text-white flex flex-col items-center justify-center gap-1.5 shadow-md border border-white/10 relative overflow-hidden"
                     >
-                      <span className="text-2xl font-bold">G</span>
-                      <span className="text-sm">Google Pay</span>
+                      {/* Google G Colors Gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#4285F4] via-[#EA4335] to-[#FBBC05] opacity-20" />
+
+                      <div className="h-8 w-8 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm z-10">
+                        <span className="text-lg font-bold text-white">G</span>
+                      </div>
+                      <span className="text-[10px] font-bold tracking-wide z-10">GPay</span>
                     </motion.button>
 
-                    {/* BHIM UPI */}
+                    {/* Paytm */}
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      onClick={() => handleUPIPayment('bhim')}
-                      className="p-3.5 rounded-2xl bg-[#6C5CE7] text-white font-semibold flex flex-col items-center justify-center gap-2 transition-all border border-[#6C5CE7]/20"
+                      whileHover={{ scale: 1.02, translateY: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleUPIPayment('paytm')}
+                      className="p-3 rounded-2xl bg-[#00BAF2] text-white flex flex-col items-center justify-center gap-1.5 shadow-md shadow-[#00BAF2]/20 border border-white/10"
                     >
-                      <span className="text-2xl">🇮🇳</span>
-                      <span className="text-sm">BHIM UPI</span>
+                      <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <Wallet className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="text-[10px] font-bold tracking-wide">Paytm</span>
                     </motion.button>
                   </div>
+                  <p className="text-[10px] text-center text-muted-foreground mt-2">
+                    {paymentMethod === 'upi'
+                      ? "Opening app with pre-filled amount..."
+                      : "Opening app... Paste the copied number to pay."}
+                  </p>
                 </div>
-
 
 
                 {/* Record Transfer Section */}
