@@ -170,20 +170,16 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
 
     if (paymentMethod === 'upi' && receiverUPI) {
       // UPI Intent with mode=02 - Opens contact/chat interface, NOT QR screen
-      // This bypasses the "QR codes via gallery" restriction
-      const upiString = `upi://pay?pa=${receiverUPI}&pn=${receiverName}&am=${transferAmount}&cu=INR&mode=02`
+      // NO AMOUNT - Pre-filled amounts trigger UPI security restrictions
+      // User enters amount manually in the app (one extra step but always works)
 
-      // Paytm is stricter - remove amount to avoid security blocks
-      const paytmString = `upi://pay?pa=${receiverUPI}&pn=${receiverName}&cu=INR&mode=02`
-
-      // Google Pay uses different scheme
-      const gpayString = `tez://upi/pay?pa=${receiverUPI}&pn=${receiverName}&am=${transferAmount}&cu=INR&mode=02`
+      const upiBase = `pa=${receiverUPI}&pn=${receiverName}&cu=INR&mode=02`
 
       const links = {
-        phonepe: upiString,
-        googlepay: gpayString, // Google Pay specific scheme
-        paytm: paytmString, // No amount for Paytm
-        universal: upiString
+        phonepe: `upi://pay?${upiBase}`,
+        googlepay: `tez://upi/pay?${upiBase}`, // Google Pay uses tez:// scheme
+        paytm: `upi://pay?${upiBase}`,
+        universal: `upi://pay?${upiBase}`
       }
       return links[app] || links.universal
     }
@@ -614,9 +610,15 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                           rel="noopener noreferrer"
                           className="block p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white text-center transition-colors no-underline"
                           onClick={(e) => {
-                            if (!generateSafeUPILink('phonepe')) {
+                            const link = generateSafeUPILink('phonepe')
+                            if (!link) {
                               e.preventDefault()
                               toast.error('Enter amount first')
+                            } else {
+                              // Copy amount to clipboard for easy paste
+                              const amount = parseFloat(formData.amount)
+                              navigator.clipboard.writeText(amount.toString())
+                              toast.success(`₹${amount} copied - paste in PhonePe`, { duration: 3000 })
                             }
                           }}
                         >
@@ -690,7 +692,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
 
                     <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
                       {paymentMethod === 'upi'
-                        ? "Tap app → Verify details → Enter UPI PIN → Pay"
+                        ? "₹ Amount copied! Tap app → Paste amount → Enter PIN → Pay"
                         : "Number & amount copied. Open app → Send Money → To Mobile Number → Paste"}
                     </p>
                   </div>
