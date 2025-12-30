@@ -168,11 +168,9 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     const transferAmount = parseFloat(formData.amount)
     if (!transferAmount || transferAmount <= 0) return null
 
-    const description = formData.description || `Payment from ${fromName}`
-
     if (paymentMethod === 'upi' && receiverUPI) {
-      // Standard UPI deep link (works across all apps)
-      const upiParams = `pa=${receiverUPI}&pn=${receiverName}&cu=INR&tn=${encodeURIComponent(description)}`
+      // Minimal UPI params - no description to avoid security blocks
+      const upiParams = `pa=${receiverUPI}&pn=${receiverName}&cu=INR`
 
       const links = {
         phonepe: `phonepe://pay?${upiParams}`,
@@ -181,17 +179,36 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
         universal: `upi://pay?${upiParams}`
       }
       return links[app] || links.universal
-    } else if (receiverPhoneNum) {
-      // Phone number flows (legacy, less reliable)
-      const links = {
-        phonepe: `phonepe://pay?pn=${receiverName}&mc=0000&tn=${encodeURIComponent(description)}&cu=INR&mn=${receiverPhoneNum}`,
-        paytm: `paytmmp://pay?featuretype=sendmoney&recipient=${receiverPhoneNum}`,
-        googlepay: `tez://upi/pay?pn=${receiverName}&cu=INR`,
-        universal: `upi://pay?pn=${receiverName}&cu=INR`
-      }
-      return links[app] || links.universal
     }
+
+    // Phone number method: Deep links don't work reliably
+    // Return null - we'll use manual copy-paste flow instead
     return null
+  }
+
+  // Handle manual phone number payment
+  const handlePhonePayment = (app) => {
+    if (!receiverPhoneNum) {
+      toast.error('Phone number not available')
+      return
+    }
+
+    const amount = parseFloat(formData.amount)
+    if (!amount || amount <= 0) {
+      toast.error('Enter a valid amount')
+      return
+    }
+
+    // Copy both number and amount to clipboard
+    const paymentInfo = `${receiverPhoneNum}\n₹${amount}`
+    navigator.clipboard.writeText(paymentInfo)
+      .then(() => {
+        toast.success(
+          `Copied!\n\nOpen ${app} → Send Money → To Mobile Number → Paste`,
+          { duration: 5000 }
+        )
+      })
+      .catch(() => toast.error('Failed to copy'))
   }
 
   // Handle recording transfer after UPI payment
@@ -574,70 +591,100 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                   </div>
 
                   {/* SAFE UPI APP LINKS - User-triggered only (No auto-redirects) */}
-                  {/* Using <a> tags instead of onClick to avoid browser security blocks */}
+                  {/* Using <a> tags for UPI ID, buttons for phone number */}
                   <div className="space-y-3 mb-6">
                     <p className="text-xs text-center text-muted-foreground mb-2">
-                      Or open UPI app directly:
+                      {paymentMethod === 'upi' ? 'Open UPI app:' : 'Copy & open app manually:'}
                     </p>
 
-                    {/* App Grid - Safe Anchor Tags */}
+                    {/* App Grid */}
                     <div className="grid grid-cols-3 gap-2.5">
                       {/* PhonePe */}
-                      <a
-                        href={generateSafeUPILink('phonepe')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white text-center transition-colors no-underline"
-                        onClick={(e) => {
-                          if (!generateSafeUPILink('phonepe')) {
-                            e.preventDefault()
-                            toast.error('Enter amount first')
-                          }
-                        }}
-                      >
-                        <Smartphone className="h-5 w-5 mx-auto mb-1" />
-                        <span className="text-xs font-semibold block">PhonePe</span>
-                      </a>
+                      {paymentMethod === 'upi' ? (
+                        <a
+                          href={generateSafeUPILink('phonepe')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white text-center transition-colors no-underline"
+                          onClick={(e) => {
+                            if (!generateSafeUPILink('phonepe')) {
+                              e.preventDefault()
+                              toast.error('Enter amount first')
+                            }
+                          }}
+                        >
+                          <Smartphone className="h-5 w-5 mx-auto mb-1" />
+                          <span className="text-xs font-semibold block">PhonePe</span>
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => handlePhonePayment('PhonePe')}
+                          className="p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white text-center transition-colors"
+                        >
+                          <Smartphone className="h-5 w-5 mx-auto mb-1" />
+                          <span className="text-xs font-semibold block">PhonePe</span>
+                        </button>
+                      )}
 
                       {/* Google Pay */}
-                      <a
-                        href={generateSafeUPILink('googlepay')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block p-4 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#34A853] hover:from-[#3367D6] hover:to-[#2d8e47] text-white text-center transition-all no-underline"
-                        onClick={(e) => {
-                          if (!generateSafeUPILink('googlepay')) {
-                            e.preventDefault()
-                            toast.error('Enter amount first')
-                          }
-                        }}
-                      >
-                        <span className="text-xl font-bold block">G</span>
-                        <span className="text-xs font-semibold block">GPay</span>
-                      </a>
+                      {paymentMethod === 'upi' ? (
+                        <a
+                          href={generateSafeUPILink('googlepay')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-4 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#34A853] hover:from-[#3367D6] hover:to-[#2d8e47] text-white text-center transition-all no-underline"
+                          onClick={(e) => {
+                            if (!generateSafeUPILink('googlepay')) {
+                              e.preventDefault()
+                              toast.error('Enter amount first')
+                            }
+                          }}
+                        >
+                          <span className="text-xl font-bold block">G</span>
+                          <span className="text-xs font-semibold block">GPay</span>
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => handlePhonePayment('Google Pay')}
+                          className="p-4 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#34A853] hover:from-[#3367D6] hover:to-[#2d8e47] text-white text-center transition-all"
+                        >
+                          <span className="text-xl font-bold block">G</span>
+                          <span className="text-xs font-semibold block">GPay</span>
+                        </button>
+                      )}
 
                       {/* Paytm */}
-                      <a
-                        href={generateSafeUPILink('paytm')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block p-4 rounded-xl bg-[#00BAF2] hover:bg-[#0095c7] text-white text-center transition-colors no-underline"
-                        onClick={(e) => {
-                          if (!generateSafeUPILink('paytm')) {
-                            e.preventDefault()
-                            toast.error('Enter amount first')
-                          }
-                        }}
-                      >
-                        <Wallet className="h-5 w-5 mx-auto mb-1" />
-                        <span className="text-xs font-semibold block">Paytm</span>
-                      </a>
+                      {paymentMethod === 'upi' ? (
+                        <a
+                          href={generateSafeUPILink('paytm')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-4 rounded-xl bg-[#00BAF2] hover:bg-[#0095c7] text-white text-center transition-colors no-underline"
+                          onClick={(e) => {
+                            if (!generateSafeUPILink('paytm')) {
+                              e.preventDefault()
+                              toast.error('Enter amount first')
+                            }
+                          }}
+                        >
+                          <Wallet className="h-5 w-5 mx-auto mb-1" />
+                          <span className="text-xs font-semibold block">Paytm</span>
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => handlePhonePayment('Paytm')}
+                          className="p-4 rounded-xl bg-[#00BAF2] hover:bg-[#0095c7] text-white text-center transition-colors"
+                        >
+                          <Wallet className="h-5 w-5 mx-auto mb-1" />
+                          <span className="text-xs font-semibold block">Paytm</span>
+                        </button>
+                      )}
                     </div>
 
                     <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
                       {paymentMethod === 'upi'
                         ? "Tap app → Verify details → Enter UPI PIN → Pay"
-                        : "Paste number manually if not pre-filled"}
+                        : "Number & amount copied. Open app → Send Money → To Mobile Number → Paste"}
                     </p>
                   </div>
 
