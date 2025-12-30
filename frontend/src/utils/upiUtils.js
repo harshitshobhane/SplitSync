@@ -27,6 +27,33 @@ export function generateUPIPaymentLink(upiId, amount, name = 'SplitHalf Payment'
 }
 
 /**
+ * Generate specific Mobile Number deep links for apps that support it
+ * This is a fallback/alternative when VPA links are blocked by risk policies.
+ * @param {string} phoneNumber - 10 digit mobile number
+ * @returns {Object} App links
+ */
+export function generateMobileDeepLinks(phoneNumber) {
+  if (!phoneNumber) return null
+
+  // clean number
+  const cleanNum = phoneNumber.replace(/\D/g, '').slice(-10)
+
+  return {
+    // PhonePe supports direct number payment via 'mn' param
+    phonepe: `phonepe://pay?mn=${cleanNum}`,
+
+    // Paytm often supports this specific scheme for send money
+    paytm: `paytmmp://pay?featuretype=sendmoney&recipient=${cleanNum}`,
+
+    // Google Pay: generally just opens the app
+    googlepay: 'tez://',
+
+    // Default fallback
+    universal: `tel:${cleanNum}` // Not ideal but 'tel' is a safe fallback if nothing else
+  }
+}
+
+/**
  * Generate UPI payment link for different apps
  * @param {string} upiId - UPI ID
  * @param {number} amount - Amount to pay

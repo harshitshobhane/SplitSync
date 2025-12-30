@@ -51,7 +51,7 @@ const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQue
   }
 
   return (
-    <div className="h-full flex flex-col gap-3 sm:gap-4 w-full pb-20 px-3 sm:px-4 overflow-y-auto scroll-smooth">
+    <div className="h-full flex flex-col gap-3 sm:gap-4 w-full pb-20 px-3 sm:px-4 overflow-y-auto scroll-smooth max-w-4xl mx-auto">
       {/* Balance Card */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -170,7 +170,7 @@ const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQue
                   <div className="w-full bg-muted rounded-full h-2 mb-1">
                     <div
                       className={`h-2 rounded-full transition-all ${percentUsed >= 100 ? 'bg-red-600' :
-                          alertReached ? 'bg-amber-600' : 'bg-primary'
+                        alertReached ? 'bg-amber-600' : 'bg-primary'
                         }`}
                       style={{ width: `${Math.min(percentUsed, 100)}%` }}
                     />
