@@ -169,14 +169,15 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     if (!transferAmount || transferAmount <= 0) return null
 
     if (paymentMethod === 'upi' && receiverUPI) {
-      // Minimal UPI params - no description to avoid security blocks
-      const upiParams = `pa=${receiverUPI}&pn=${receiverName}&cu=INR`
+      // UPI Intent with mode=02 - Opens contact/chat interface, NOT QR screen
+      // This bypasses the "QR codes via gallery" restriction
+      const upiString = `upi://pay?pa=${receiverUPI}&pn=${receiverName}&am=${transferAmount}&cu=INR&mode=02`
 
       const links = {
-        phonepe: `phonepe://pay?${upiParams}`,
-        googlepay: `tez://upi/pay?${upiParams}`,
-        paytm: `paytmmp://pay?${upiParams}`,
-        universal: `upi://pay?${upiParams}`
+        phonepe: upiString,
+        googlepay: upiString,
+        paytm: upiString,
+        universal: upiString
       }
       return links[app] || links.universal
     }
