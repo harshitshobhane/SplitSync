@@ -449,7 +449,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-4"
             onClick={() => setShowUPIModal(false)}
           >
             <motion.div
@@ -591,65 +591,53 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                     </motion.button>
 
                     {/* App Grid */}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2.5">
                       {/* PhonePe */}
                       <motion.button
-                        whileHover={{ scale: 1.02, translateY: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleUPIPayment('phonepe')}
-                        className="p-3 rounded-2xl bg-[#5F259F] text-white flex flex-col items-center justify-center gap-1.5 shadow-md shadow-[#5F259F]/20 border border-white/10"
+                        className="p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white flex flex-col items-center justify-center gap-2 transition-colors"
                       >
-                        <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                          <Smartphone className="h-4 w-4 text-white" />
-                        </div>
-                        <span className="text-[10px] font-bold tracking-wide">PhonePe</span>
+                        <Smartphone className="h-5 w-5" />
+                        <span className="text-xs font-semibold">PhonePe</span>
                       </motion.button>
 
                       {/* Google Pay */}
                       <motion.button
-                        whileHover={{ scale: 1.02, translateY: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleUPIPayment('googlepay')}
-                        className="p-3 rounded-2xl bg-[#1f1f1f] text-white flex flex-col items-center justify-center gap-1.5 shadow-md border border-white/10 relative overflow-hidden"
+                        className="p-4 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#34A853] hover:from-[#3367D6] hover:to-[#2d8e47] text-white flex flex-col items-center justify-center gap-2 transition-all"
                       >
-                        {/* Google G Colors Gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#4285F4] via-[#EA4335] to-[#FBBC05] opacity-20" />
-
-                        <div className="h-8 w-8 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm z-10">
-                          <span className="text-lg font-bold text-white">G</span>
-                        </div>
-                        <span className="text-[10px] font-bold tracking-wide z-10">GPay</span>
+                        <span className="text-xl font-bold">G</span>
+                        <span className="text-xs font-semibold">GPay</span>
                       </motion.button>
 
                       {/* Paytm */}
                       <motion.button
-                        whileHover={{ scale: 1.02, translateY: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleUPIPayment('paytm')}
-                        className="p-3 rounded-2xl bg-[#00BAF2] text-white flex flex-col items-center justify-center gap-1.5 shadow-md shadow-[#00BAF2]/20 border border-white/10"
+                        className="p-4 rounded-xl bg-[#00BAF2] hover:bg-[#0095c7] text-white flex flex-col items-center justify-center gap-2 transition-colors"
                       >
-                        <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                          <Wallet className="h-4 w-4 text-white" />
-                        </div>
-                        <span className="text-[10px] font-bold tracking-wide">Paytm</span>
+                        <Wallet className="h-5 w-5" />
+                        <span className="text-xs font-semibold">Paytm</span>
                       </motion.button>
                     </div>
-                    {/* Download QR Bypass Button */}
+                    {/* Download QR Button */}
                     {receiverUPI && (
                       <motion.button
-                        whileTap={{ scale: 0.95 }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={handleDownloadQR}
-                        className="w-full mt-3 py-2 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl flex items-center justify-center gap-2 transition-colors border border-primary/20"
+                        className="w-full py-3 text-sm font-medium bg-muted hover:bg-accent text-foreground rounded-xl flex items-center justify-center gap-2 transition-colors border border-border"
                       >
-                        <Download className="h-3.5 w-3.5" />
-                        Download QR (Bypass Error)
+                        <Download className="h-4 w-4" />
+                        Download QR & Scan from Gallery
                       </motion.button>
                     )}
 
-                    <p className="text-[10px] text-center text-muted-foreground mt-2">
+                    <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
                       {paymentMethod === 'upi'
-                        ? "Having issues? Try 'Download QR' and scan from gallery."
-                        : "Opening app... Paste number if not pre-filled."}
+                        ? "Tap an app to pay. Having errors? Download QR and scan from gallery."
+                        : "App will open. Paste the copied number to pay."}
                     </p>
                   </div>
 
