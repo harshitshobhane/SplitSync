@@ -130,41 +130,21 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       return
     }
 
-    // We don't block if number is missing, we let user enter/copy it in modal
-    // Just open modal
     const description = formData.description || `Payment from ${fromName}`
+    const targetPhone = receiverPhone || receiverPhoneNum
 
-    // If app is not universal, we might want to try to construct a VPA if we have a number
-    // e.g. NUMBER@paytm. But that's risky.
-    // Better: Just open the app. `openUPIPayment` might need adjustment or we just use it for "universal" which is fine.
-
-    // Actually, this function was used to verify data before opening modal? No, `handleUPIPayment` is called from WITHIN the modal buttons.
-    // So we just need to try to open the app.
-
-    // For direct deep links (Paytm/PhonePe buttons), they need a link.
-    // If we only have a phone number, we can't make a perfect deep link DEEP into the payment screen without a VPA.
-    // But we can let the user COPY the number and Open the app.
-
-    // So for "Copy Number & Open App" flow:
-    if (receiverPhoneNum || receiverPhone) {
-      // Just copy to clipboard? 
-      // We will do this inside the button click handler in JSX mostly (copy & open).
+    // If we have a phone number but no explicit VPA, copy the number to clipboard
+    // This allows the user to easily paste it in the "Pay to Number" section of the app
+    if (targetPhone) {
+      navigator.clipboard.writeText(targetPhone)
+        .then(() => toast.success('Phone number copied to clipboard'))
+        .catch(() => { }) // Ignore copy errors
     }
 
-    // This function originally did `openUPIPayment`.
-    // We will change it to just "open app".
-
-    const target = receiverPhone || receiverPhoneNum || ''
-    // We pass generic info. 
-    // If we want to support "Pay to Number" intents:
-    // Some apps support `upi://pay?pa=&pn=&...` with `pa` empty? No.
-
-    // We will rely on "Manual Entry" flow primarily if no VPA.
-    // So just open the app.
     const success = openUPIPayment('', transferAmount, receiverName, description, app)
 
     if (success) {
-      toast.success(`Opening ${app === 'universal' ? 'UPI app' : app}... Complete payment and return to record the transfer.`)
+      toast.success(`Opening ${app === 'universal' ? 'UPI app' : app}... Paste number to pay.`)
       // Keep modal open so user can record after payment
     } else {
       toast.error('Failed to open UPI payment')

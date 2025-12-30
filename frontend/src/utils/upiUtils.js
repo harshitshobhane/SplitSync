@@ -37,26 +37,37 @@ export function generateUPIPaymentLink(upiId, amount, name = 'SplitHalf Payment'
 export function generateUPIAppLinks(upiId, amount, name = 'SplitHalf Payment', description = '') {
   const baseLink = generateUPIPaymentLink(upiId, amount, name, description)
 
-  if (!baseLink) return null
+  if (baseLink) {
+    const query = baseLink.split('?')[1]
+    return {
+      // Universal UPI link (opens default UPI app)
+      universal: baseLink,
 
+      // PhonePe
+      phonepe: `phonepe://pay?${query}`,
+
+      // Paytm
+      paytm: `paytmmp://pay?${query}`,
+
+      // Google Pay
+      googlepay: `tez://pay?${query}`,
+
+      // BHIM UPI
+      bhim: `bhim://pay?${query}`,
+
+      // Amazon Pay
+      amazonpay: `amazonpay://pay?${query}`
+    }
+  }
+
+  // Fallback: Return app launch links if no VPA is provided
   return {
-    // Universal UPI link (opens default UPI app)
-    universal: baseLink,
-
-    // PhonePe
-    phonepe: `phonepe://pay?${baseLink.split('?')[1]}`,
-
-    // Paytm
-    paytm: `paytmmp://pay?${baseLink.split('?')[1]}`,
-
-    // Google Pay
-    googlepay: `tez://pay?${baseLink.split('?')[1]}`,
-
-    // BHIM UPI
-    bhim: `bhim://pay?${baseLink.split('?')[1]}`,
-
-    // Amazon Pay
-    amazonpay: `amazonpay://pay?${baseLink.split('?')[1]}`
+    universal: 'upi://pay',
+    phonepe: 'phonepe://',
+    paytm: 'paytmmp://',
+    googlepay: 'tez://',
+    bhim: 'bhim://',
+    amazonpay: 'amazonpay://'
   }
 }
 
