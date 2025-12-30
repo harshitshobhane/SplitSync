@@ -55,51 +55,62 @@ export function generateMobileDeepLinks(phoneNumber) {
 
 /**
  * Generate UPI payment link for different apps
+ * IMPORTANT: We DON'T include amount in deep links to avoid UPI Risk Policy errors
+ * User will enter amount manually in the app (more secure and always works)
  * @param {string} upiId - UPI ID
- * @param {number} amount - Amount to pay
+ * @param {number} amount - Amount to pay (for QR code only, not for deep links)
  * @param {string} name - Payee name
  * @param {string} description - Payment description
  * @returns {Object} Object with different UPI app links
  */
 export function generateUPIAppLinks(upiId, amount, name = 'SplitHalf Payment', description = '') {
-  const baseLink = generateUPIPaymentLink(upiId, amount, name, description)
-
-  if (baseLink) {
-    const query = baseLink.split('?')[1]
+  if (!upiId || !upiId.includes('@')) {
+    // Fallback: Return app launch links if no VPA is provided
     return {
-      // Universal UPI link (opens default UPI app)
-      universal: baseLink,
-
-      // PhonePe
-      phonepe: `phonepe://pay?${query}`,
-
-      // Paytm
-      paytm: `paytmmp://pay?${query}`,
-
-      // Google Pay
-      googlepay: `tez://pay?${query}`,
-
-      // BHIM UPI
-      bhim: `bhim://pay?${query}`,
-
-      // Amazon Pay
-      amazonpay: `amazonpay://pay?${query}`
+      universal: 'upi://pay',
+      phonepe: 'phonepe://',
+      paytm: 'paytmmp://',
+      googlepay: 'tez://',
+      bhim: 'bhim://',
+      amazonpay: 'amazonpay://'
     }
   }
 
-  // Fallback: Return app launch links if no VPA is provided
+  // CRITICAL: Don't include amount in deep links to avoid UPI Risk Policy errors
+  // Only include: pa (UPI ID), pn (name), cu (currency), mode=02 (opens contact interface)
+  // User will enter amount manually in the app
+  const safeParams = new URLSearchParams({
+    pa: upiId, // Payee address (UPI ID)
+    pn: name, // Payee name
+    cu: 'INR', // Currency
+    mode: '02' // Opens contact/chat interface instead of direct payment (avoids risk policy)
+  })
+  
+  const safeQuery = safeParams.toString()
+  
   return {
-    universal: 'upi://pay',
-    phonepe: 'phonepe://',
-    paytm: 'paytmmp://',
-    googlepay: 'tez://',
-    bhim: 'bhim://',
-    amazonpay: 'amazonpay://'
+    // Universal UPI link (opens default UPI app)
+    universal: `upi://pay?${safeQuery}`,
+
+    // PhonePe - Use universal UPI scheme (more reliable)
+    phonepe: `upi://pay?${safeQuery}`,
+
+    // Paytm - Use universal UPI scheme (avoids risk policy)
+    paytm: `upi://pay?${safeQuery}`,
+
+    // Google Pay
+    googlepay: `tez://upi/pay?${safeQuery}`,
+
+    // BHIM UPI
+    bhim: `bhim://pay?${safeQuery}`,
+
+    // Amazon Pay
+    amazonpay: `amazonpay://pay?${safeQuery}`
   }
 }
 
 /**
- * Open UPI payment in the specified app
+ * Open UPI payment in the specified app with fallback mechanism
  * @param {string} upiId - UPI ID
  * @param {number} amount - Amount to pay
  * @param {string} name - Payee name
@@ -116,8 +127,28 @@ export function openUPIPayment(upiId, amount, name, description, app = 'universa
   const link = links[app] || links.universal
 
   if (link) {
-    window.location.href = link
-    return true
+    // Try to open the deep link
+    try {
+      // For Android Intent URLs, use window.location
+      if (link.startsWith('intent://')) {
+        window.location.href = link
+      } else {
+        // For regular deep links, try window.open first, then fallback to location
+        const opened = window.open(link, '_blank')
+        // If window.open failed (blocked), fallback to location
+        if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+          window.location.href = link
+        }
+      }
+      return true
+    } catch (e) {
+      // Fallback to universal UPI link if app-specific link fails
+      if (app !== 'universal' && links.universal) {
+        window.location.href = links.universal
+        return true
+      }
+      return false
+    }
   }
 
   return false

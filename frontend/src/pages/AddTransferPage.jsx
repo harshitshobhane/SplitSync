@@ -164,29 +164,66 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   // SAFE UPI LINK GENERATOR (No programmatic redirects - security best practice)
   // Returns deep link string for use in <a href>, NOT window.location.href
   // This prevents "malicious redirect" warnings in Paytm/browser security
+  // IMPORTANT: Amount is NOT included in deep links to avoid UPI Risk Policy errors
   const generateSafeUPILink = (app = 'universal') => {
-    const transferAmount = parseFloat(formData.amount)
-    if (!transferAmount || transferAmount <= 0) return null
-
     if (paymentMethod === 'upi' && receiverUPI) {
-      // UPI Intent with mode=02 - Opens contact/chat interface, NOT QR screen
-      // NO AMOUNT - Pre-filled amounts trigger UPI security restrictions
-      // User enters amount manually in the app (one extra step but always works)
-
-      const upiBase = `pa=${receiverUPI}&pn=${receiverName}&cu=INR&mode=02`
-
-      const links = {
-        phonepe: `upi://pay?${upiBase}`,
-        googlepay: `tez://upi/pay?${upiBase}`, // Google Pay uses tez:// scheme
-        paytm: `upi://pay?${upiBase}`,
-        universal: `upi://pay?${upiBase}`
-      }
+      // Amount is passed but NOT included in deep link (avoids UPI Risk Policy)
+      // User will enter amount manually in the app
+      const links = generateUPIAppLinks(
+        receiverUPI,
+        parseFloat(formData.amount) || 0, // For QR code only
+        receiverName,
+        formData.description || `Payment to ${receiverName}`
+      )
       return links[app] || links.universal
     }
 
     // Phone number method: Deep links don't work reliably
     // Return null - we'll use manual copy-paste flow instead
     return null
+  }
+
+  // Handle deep link click with fallback
+  const handleDeepLinkClick = (app, e) => {
+    const link = generateSafeUPILink(app)
+    if (!link) {
+      e.preventDefault()
+      toast.error('Enter amount first')
+      return
+    }
+
+    // Copy amount to clipboard for easy paste
+    const amount = parseFloat(formData.amount)
+    if (amount > 0) {
+      navigator.clipboard.writeText(amount.toString())
+        .then(() => {
+          toast.success(`₹${amount} copied - paste in ${app}`, { duration: 3000 })
+        })
+        .catch(() => {
+          // Silently fail clipboard copy
+        })
+    }
+
+    // Try to open the deep link
+    // If the link doesn't work, the browser will handle it
+    // For Android Intent URLs, we need to let the default behavior happen
+    if (link.startsWith('intent://')) {
+      // Let the default <a> tag behavior handle it
+      return
+    }
+
+    // For regular deep links, try to open in new tab/window
+    // If that fails, the browser will handle the fallback
+    try {
+      const opened = window.open(link, '_blank')
+      if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+        // If popup blocked, let default behavior handle it
+        return
+      }
+      e.preventDefault()
+    } catch (err) {
+      // Let default behavior handle it
+    }
   }
 
   // Handle manual phone number payment
@@ -605,22 +642,11 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                       {/* PhonePe */}
                       {paymentMethod === 'upi' ? (
                         <a
-                          href={generateSafeUPILink('phonepe')}
+                          href={generateSafeUPILink('phonepe') || '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block p-4 rounded-xl bg-[#5F259F] hover:bg-[#4d1f7f] text-white text-center transition-colors no-underline"
-                          onClick={(e) => {
-                            const link = generateSafeUPILink('phonepe')
-                            if (!link) {
-                              e.preventDefault()
-                              toast.error('Enter amount first')
-                            } else {
-                              // Copy amount to clipboard for easy paste
-                              const amount = parseFloat(formData.amount)
-                              navigator.clipboard.writeText(amount.toString())
-                              toast.success(`₹${amount} copied - paste in PhonePe`, { duration: 3000 })
-                            }
-                          }}
+                          onClick={(e) => handleDeepLinkClick('phonepe', e)}
                         >
                           <Smartphone className="h-5 w-5 mx-auto mb-1" />
                           <span className="text-xs font-semibold block">PhonePe</span>
@@ -638,16 +664,11 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                       {/* Google Pay */}
                       {paymentMethod === 'upi' ? (
                         <a
-                          href={generateSafeUPILink('googlepay')}
+                          href={generateSafeUPILink('googlepay') || '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block p-4 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#34A853] hover:from-[#3367D6] hover:to-[#2d8e47] text-white text-center transition-all no-underline"
-                          onClick={(e) => {
-                            if (!generateSafeUPILink('googlepay')) {
-                              e.preventDefault()
-                              toast.error('Enter amount first')
-                            }
-                          }}
+                          onClick={(e) => handleDeepLinkClick('googlepay', e)}
                         >
                           <span className="text-xl font-bold block">G</span>
                           <span className="text-xs font-semibold block">GPay</span>
@@ -665,16 +686,11 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                       {/* Paytm */}
                       {paymentMethod === 'upi' ? (
                         <a
-                          href={generateSafeUPILink('paytm')}
+                          href={generateSafeUPILink('paytm') || '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block p-4 rounded-xl bg-[#00BAF2] hover:bg-[#0095c7] text-white text-center transition-colors no-underline"
-                          onClick={(e) => {
-                            if (!generateSafeUPILink('paytm')) {
-                              e.preventDefault()
-                              toast.error('Enter amount first')
-                            }
-                          }}
+                          onClick={(e) => handleDeepLinkClick('paytm', e)}
                         >
                           <Wallet className="h-5 w-5 mx-auto mb-1" />
                           <span className="text-xs font-semibold block">Paytm</span>
@@ -692,7 +708,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
 
                     <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
                       {paymentMethod === 'upi'
-                        ? "₹ Amount copied! Tap app → Paste amount → Enter PIN → Pay"
+                        ? "₹ Amount copied! Tap app → Enter amount manually → Enter PIN → Pay"
                         : "Number & amount copied. Open app → Send Money → To Mobile Number → Paste"}
                     </p>
                   </div>
