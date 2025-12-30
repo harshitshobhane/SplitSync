@@ -3,14 +3,16 @@
 // No fees are charged - payments are processed directly through UPI apps
 
 /**
- * Generate UPI payment link
+ * Generate UPI payment link for QR codes
+ * IMPORTANT: We can optionally exclude amount to avoid UPI Risk Policy errors
  * @param {string} upiId - UPI ID (e.g., "name@paytm")
- * @param {number} amount - Amount to pay
+ * @param {number} amount - Amount to pay (optional, can be 0 to exclude)
  * @param {string} name - Payee name
  * @param {string} description - Payment description/note
+ * @param {boolean} includeAmount - Whether to include amount in QR (default: false to avoid errors)
  * @returns {string} UPI payment URI
  */
-export function generateUPIPaymentLink(upiId, amount, name = 'SplitHalf Payment', description = '') {
+export function generateUPIPaymentLink(upiId, amount = 0, name = 'SplitHalf Payment', description = '', includeAmount = false) {
   if (!upiId || !upiId.includes('@')) {
     return null
   }
@@ -18,10 +20,20 @@ export function generateUPIPaymentLink(upiId, amount, name = 'SplitHalf Payment'
   const params = new URLSearchParams({
     pa: upiId, // Payee address (UPI ID)
     pn: name, // Payee name
-    am: amount.toFixed(2), // Amount
     cu: 'INR', // Currency
     ...(description && { tn: description }) // Transaction note
   })
+
+  // Only include amount if explicitly requested and valid
+  // Excluding amount avoids "too much money" / "not enough money" errors
+  if (includeAmount) {
+    const numAmount = parseFloat(amount)
+    if (!isNaN(numAmount) && numAmount > 0) {
+      // Format amount to 2 decimal places
+      const formattedAmount = numAmount.toFixed(2)
+      params.set('am', formattedAmount)
+    }
+  }
 
   return `upi://pay?${params.toString()}`
 }
@@ -55,57 +67,37 @@ export function generateMobileDeepLinks(phoneNumber) {
 
 /**
  * Generate UPI payment link for different apps
- * IMPORTANT: We DON'T include amount in deep links to avoid UPI Risk Policy errors
- * User will enter amount manually in the app (more secure and always works)
- * @param {string} upiId - UPI ID
- * @param {number} amount - Amount to pay (for QR code only, not for deep links)
- * @param {string} name - Payee name
- * @param {string} description - Payment description
- * @returns {Object} Object with different UPI app links
+ * CRITICAL: We open apps WITHOUT any payment parameters to avoid UPI Risk Policy errors
+ * Any deep link with UPI parameters triggers risk policy, so we just open the app
+ * User will manually enter UPI ID and amount (copied to clipboard)
+ * @param {string} upiId - UPI ID (for clipboard, not for deep link)
+ * @param {number} amount - Amount to pay (for clipboard, not for deep link)
+ * @param {string} name - Payee name (for clipboard, not for deep link)
+ * @param {string} description - Payment description (for clipboard, not for deep link)
+ * @returns {Object} Object with different UPI app launch links (no payment params)
  */
 export function generateUPIAppLinks(upiId, amount, name = 'SplitHalf Payment', description = '') {
-  if (!upiId || !upiId.includes('@')) {
-    // Fallback: Return app launch links if no VPA is provided
-    return {
-      universal: 'upi://pay',
-      phonepe: 'phonepe://',
-      paytm: 'paytmmp://',
-      googlepay: 'tez://',
-      bhim: 'bhim://',
-      amazonpay: 'amazonpay://'
-    }
-  }
-
-  // CRITICAL: Don't include amount in deep links to avoid UPI Risk Policy errors
-  // Only include: pa (UPI ID), pn (name), cu (currency), mode=02 (opens contact interface)
-  // User will enter amount manually in the app
-  const safeParams = new URLSearchParams({
-    pa: upiId, // Payee address (UPI ID)
-    pn: name, // Payee name
-    cu: 'INR', // Currency
-    mode: '02' // Opens contact/chat interface instead of direct payment (avoids risk policy)
-  })
-  
-  const safeQuery = safeParams.toString()
-  
+  // CRITICAL FIX: Just open the app WITHOUT any payment parameters
+  // This completely avoids UPI Risk Policy errors
+  // User will paste UPI ID and amount from clipboard
   return {
     // Universal UPI link (opens default UPI app)
-    universal: `upi://pay?${safeQuery}`,
+    universal: 'upi://',
 
-    // PhonePe - Use universal UPI scheme (more reliable)
-    phonepe: `upi://pay?${safeQuery}`,
+    // PhonePe - Just open app
+    phonepe: 'phonepe://',
 
-    // Paytm - Use universal UPI scheme (avoids risk policy)
-    paytm: `upi://pay?${safeQuery}`,
+    // Paytm - Just open app (no payment params = no risk policy error)
+    paytm: 'paytmmp://',
 
-    // Google Pay
-    googlepay: `tez://upi/pay?${safeQuery}`,
+    // Google Pay - Just open app
+    googlepay: 'tez://',
 
-    // BHIM UPI
-    bhim: `bhim://pay?${safeQuery}`,
+    // BHIM UPI - Just open app
+    bhim: 'bhim://',
 
-    // Amazon Pay
-    amazonpay: `amazonpay://pay?${safeQuery}`
+    // Amazon Pay - Just open app
+    amazonpay: 'amazonpay://'
   }
 }
 

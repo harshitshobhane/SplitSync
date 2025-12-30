@@ -183,47 +183,38 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
     return null
   }
 
-  // Handle deep link click with fallback
+  // Handle deep link click - opens app and copies payment info
   const handleDeepLinkClick = (app, e) => {
-    const link = generateSafeUPILink(app)
-    if (!link) {
+    if (paymentMethod !== 'upi' || !receiverUPI) {
+      e.preventDefault()
+      toast.error('UPI ID not available')
+      return
+    }
+
+    const amount = parseFloat(formData.amount)
+    if (!amount || amount <= 0) {
       e.preventDefault()
       toast.error('Enter amount first')
       return
     }
 
-    // Copy amount to clipboard for easy paste
-    const amount = parseFloat(formData.amount)
-    if (amount > 0) {
-      navigator.clipboard.writeText(amount.toString())
-        .then(() => {
-          toast.success(`₹${amount} copied - paste in ${app}`, { duration: 3000 })
-        })
-        .catch(() => {
-          // Silently fail clipboard copy
-        })
-    }
+    // Copy UPI ID and amount to clipboard (formatted for easy paste)
+    // Format: UPI_ID\nAmount (user can paste both)
+    const paymentInfo = `${receiverUPI}\n₹${amount}`
+    navigator.clipboard.writeText(paymentInfo)
+      .then(() => {
+        toast.success(
+          `Payment info copied!\n\nOpen ${app} → Send Money → Paste UPI ID → Enter ₹${amount}`,
+          { duration: 5000 }
+        )
+      })
+      .catch(() => {
+        // If clipboard fails, at least try to open app
+        toast.info(`Opening ${app}...`)
+      })
 
-    // Try to open the deep link
-    // If the link doesn't work, the browser will handle it
-    // For Android Intent URLs, we need to let the default behavior happen
-    if (link.startsWith('intent://')) {
-      // Let the default <a> tag behavior handle it
-      return
-    }
-
-    // For regular deep links, try to open in new tab/window
-    // If that fails, the browser will handle the fallback
-    try {
-      const opened = window.open(link, '_blank')
-      if (!opened || opened.closed || typeof opened.closed === 'undefined') {
-        // If popup blocked, let default behavior handle it
-        return
-      }
-      e.preventDefault()
-    } catch (err) {
-      // Let default behavior handle it
-    }
+    // Let the <a> tag handle opening the app
+    // The link just opens the app without any payment parameters
   }
 
   // Handle manual phone number payment
@@ -506,10 +497,17 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                 <div className="bg-white p-4 rounded-2xl shadow-sm mb-6">
                   {paymentMethod === 'upi' && receiverUPI ? (
                     <QRCode
-                      value={generateUPIPaymentLink(receiverUPI, parseFloat(formData.amount), receiverName, formData.description || `Payment to ${receiverName}`)}
+                      value={generateUPIPaymentLink(
+                        receiverUPI, 
+                        parseFloat(formData.amount) || 0, 
+                        receiverName, 
+                        formData.description || `Payment to ${receiverName}`,
+                        false // Don't include amount to avoid UPI Risk Policy errors
+                      ) || 'upi://pay'}
                       size={180}
                       viewBox={`0 0 256 256`}
                       style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                      id="payment-qr-code"
                     />
                   ) : (
                     <div className="h-[180px] w-[180px] flex items-center justify-center bg-gray-100 rounded-xl">
@@ -519,10 +517,10 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                 </div>
 
                 <p className="text-sm font-medium text-foreground">
-                  {paymentMethod === 'upi' ? `Scan specifically for ${formatCurrency(parseFloat(formData.amount), currency)}` : 'Switch to UPI ID to generate specific QR'}
+                  {paymentMethod === 'upi' ? `Scan QR → Enter ₹${formatCurrency(parseFloat(formData.amount) || 0, currency)} manually` : 'Switch to UPI ID to generate QR'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">
-                  Open your favorite UPI app on your phone and scan this code to pay instantly.
+                  Scan QR code to open payment app. Amount will be entered manually to avoid errors.
                 </p>
               </div>
 
@@ -609,11 +607,20 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
                     {receiverUPI && paymentMethod === 'upi' ? (
                       <div className="bg-white p-4 rounded-xl mb-4">
                         <QRCode
-                          value={generateUPIPaymentLink(receiverUPI, parseFloat(formData.amount) || 0, receiverName, formData.description)}
+                          value={generateUPIPaymentLink(
+                            receiverUPI, 
+                            parseFloat(formData.amount) || 0, 
+                            receiverName, 
+                            formData.description,
+                            false // Don't include amount to avoid UPI Risk Policy errors
+                          ) || 'upi://pay'}
                           size={200}
                           className="mx-auto"
+                          id="payment-qr-code"
                         />
-                        <p className="text-xs text-center text-gray-600 mt-3">Scan with any UPI app to pay</p>
+                        <p className="text-xs text-center text-gray-600 mt-3">
+                          Scan QR → Enter ₹{formatCurrency(parseFloat(formData.amount) || 0, currency)} manually → Pay
+                        </p>
                       </div>
                     ) : null}
 
@@ -708,7 +715,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
 
                     <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
                       {paymentMethod === 'upi'
-                        ? "₹ Amount copied! Tap app → Enter amount manually → Enter PIN → Pay"
+                        ? "UPI ID & amount copied! Tap app → Send Money → Paste UPI ID → Enter amount → Pay"
                         : "Number & amount copied. Open app → Send Money → To Mobile Number → Paste"}
                     </p>
                   </div>
