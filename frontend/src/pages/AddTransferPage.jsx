@@ -232,17 +232,17 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   }
 
   return (
-    <div className="h-full overflow-y-auto space-y-6 pb-6 px-3 sm:px-4 scroll-smooth max-w-2xl mx-auto">
+    <div className="min-h-full overflow-y-auto space-y-4 md:space-y-5 pt-2 pb-24 px-3 sm:px-4 scroll-smooth max-w-lg mx-auto">
       {/* Balance Summary */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-3xl p-4 sm:p-5 shadow-sm"
+        className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-2xl md:rounded-xl p-3 md:p-4 shadow-sm"
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1.5 md:mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Wallet className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-sm font-semibold text-muted-foreground truncate">Current Balance</span>
+            <span className="text-xs md:text-sm font-semibold text-muted-foreground truncate">Current Balance</span>
           </div>
           {needsSettle && suggestedAmount > 0.01 && (
             <motion.button
@@ -255,7 +255,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
             </motion.button>
           )}
         </div>
-        <p className={`text-lg sm:text-xl font-bold ${balanceInfo.color} break-words`}>
+        <p className={`text-base md:text-lg font-bold ${balanceInfo.color} break-words`}>
           {balanceInfo.message}
         </p>
       </motion.div>
@@ -264,9 +264,9 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-4"
+        className="space-y-3 md:space-y-3"
       >
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center justify-between text-xs md:text-sm text-muted-foreground">
           <span>Transfer Direction</span>
           <button
             type="button"
@@ -277,28 +277,28 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
           </button>
         </div>
 
-        <div className="bg-card border border-border rounded-3xl p-6">
+        <div className="bg-card border border-border rounded-2xl md:rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             {/* From */}
             <div className="flex-1 text-center">
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 transition-all border ${formData.fromUser === 'person1'
+                className={`inline-flex h-14 w-14 md:h-12 md:w-12 items-center justify-center rounded-full mb-2 md:mb-2 transition-all border ${formData.fromUser === 'person1'
                   ? 'bg-primary text-primary-foreground border-primary/20'
                   : 'bg-muted text-muted-foreground border-border'
                   }`}
               >
-                <span className="text-2xl font-bold">
+                <span className="text-xl md:text-lg font-bold">
                   {fromName.charAt(0)}
                 </span>
               </motion.div>
-              <p className="text-sm font-semibold text-foreground">{fromName}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Payer</p>
+              <p className="text-sm md:text-xs font-semibold text-foreground">{fromName}</p>
+              <p className="text-xs md:text-[10px] text-muted-foreground mt-0.5">Payer</p>
             </div>
 
             {/* Arrow */}
-            <div className="px-4">
-              <div className="h-px w-12 bg-border/60 relative">
+            <div className="px-3 md:px-4">
+              <div className="h-px w-10 md:w-12 bg-border/60 relative">
                 <ArrowRightLeft className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-4 w-4 text-muted-foreground bg-card dark:bg-card p-0.5" />
               </div>
             </div>
@@ -307,17 +307,17 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
             <div className="flex-1 text-center">
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className={`inline-flex h-16 w-16 items-center justify-center rounded-full mb-3 transition-all border ${formData.fromUser === 'person1'
+                className={`inline-flex h-14 w-14 md:h-12 md:w-12 items-center justify-center rounded-full mb-2 md:mb-2 transition-all border ${formData.fromUser === 'person1'
                   ? 'bg-muted text-muted-foreground border-border'
                   : 'bg-primary text-primary-foreground border-primary/20'
                   }`}
               >
-                <span className="text-2xl font-bold">
+                <span className="text-xl md:text-lg font-bold">
                   {toName.charAt(0)}
                 </span>
               </motion.div>
-              <p className="text-sm font-semibold text-foreground">{toName}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Receiver</p>
+              <p className="text-sm md:text-xs font-semibold text-foreground">{toName}</p>
+              <p className="text-xs md:text-[10px] text-muted-foreground mt-0.5">Receiver</p>
             </div>
           </div>
         </div>
@@ -328,15 +328,15 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="space-y-3"
+        className="space-y-2.5 md:space-y-2"
       >
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium">Amount</label>
+          <label className="text-sm md:text-xs font-medium">Amount</label>
         </div>
 
-        <div className="bg-card border border-border rounded-3xl p-4 transition-all focus-within:ring-4 focus-within:ring-primary/10 focus-within:border-primary/50">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-bold text-foreground">
+        <div className="bg-card border border-border rounded-2xl md:rounded-xl p-3 md:p-3 transition-all focus-within:ring-4 focus-within:ring-primary/10 focus-within:border-primary/50">
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className="text-xl md:text-lg font-bold text-foreground">
               {getCurrencySymbol(currency)}
             </span>
             <input
@@ -346,14 +346,14 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               placeholder="0.00"
               step="0.01"
               min="0.01"
-              className="flex-1 text-2xl font-bold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
+              className="flex-1 text-xl md:text-lg font-bold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
               required
             />
           </div>
         </div>
 
         {/* Quick Amounts */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-1.5 md:gap-2">
           {[100, 250, 500, 1000].map((amount) => (
             <motion.button
               key={amount}
@@ -361,7 +361,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, amount: amount.toString() }))}
-              className="py-2.5 px-3 rounded-2xl bg-muted hover:bg-accent transition-all text-sm font-semibold border border-border active:scale-95"
+              className="py-2 md:py-1.5 px-2 md:px-3 rounded-xl md:rounded-lg bg-muted hover:bg-accent transition-all text-xs md:text-xs font-semibold border border-border active:scale-95"
             >
               {getCurrencySymbol(currency)}{amount}
             </motion.button>
