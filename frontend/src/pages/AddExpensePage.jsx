@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQueryClient, useQuery } from 'react-query'
 import toast from 'react-hot-toast'
-import { 
+import {
   Loader2, Calculator, Percent, DollarSign, FileText, CreditCard, Tag, Users, Plus,
   ShoppingCart, Home, UtensilsCrossed, Heart, Zap, Plane, Ticket, Gift, FileText as FileTextIcon, HeartPulse, Car, MoreHorizontal, ChevronDown
 } from 'lucide-react'
@@ -72,9 +72,8 @@ const CategorySelector = ({ selected, onChange }) => {
                       onChange(key)
                       setIsOpen(false)
                     }}
-                    className={`w-full flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-2 sm:py-2.5 hover:bg-accent transition-colors text-left ${
-                      isSelected ? 'bg-accent' : ''
-                    }`}
+                    className={`w-full flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-2 sm:py-2.5 hover:bg-accent transition-colors text-left ${isSelected ? 'bg-accent' : ''
+                      }`}
                   >
                     <div className="p-1.5 sm:p-2 rounded bg-muted flex-shrink-0">
                       <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: category.color }} />
@@ -159,9 +158,8 @@ const RatioSelector = ({ selected, onChange, names }) => {
                       onChange(option.value)
                       setIsOpen(false)
                     }}
-                    className={`w-full flex items-center justify-between px-2.5 sm:px-3 py-2 sm:py-2.5 hover:bg-accent transition-colors ${
-                      isSelected ? 'bg-accent' : ''
-                    }`}
+                    className={`w-full flex items-center justify-between px-2.5 sm:px-3 py-2 sm:py-2.5 hover:bg-accent transition-colors ${isSelected ? 'bg-accent' : ''
+                      }`}
                   >
                     <span className="font-medium text-xs sm:text-sm">{option.label}</span>
                     {isSelected && (
@@ -179,17 +177,17 @@ const RatioSelector = ({ selected, onChange, names }) => {
 }
 
 const iconMap = {
-  ShoppingCart, 
-  Home, 
-  UtensilsCrossed, 
-  Heart, 
-  Zap, 
-  Plane, 
-  Ticket, 
-  Gift, 
-  FileText, 
-  HeartPulse, 
-  Car, 
+  ShoppingCart,
+  Home,
+  UtensilsCrossed,
+  Heart,
+  Zap,
+  Plane,
+  Ticket,
+  Gift,
+  FileText,
+  HeartPulse,
+  Car,
   MoreHorizontal
 }
 
@@ -206,7 +204,7 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
   })
   const [error, setError] = useState(null)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
-  
+
   const queryClient = useQueryClient()
   const total = parseFloat(formData.totalAmount) || 0
 
@@ -214,7 +212,7 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
   const { data: templatesData } = useQuery(['templates'], apiService.getTemplates, {
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
-  
+
   // Ensure templates is always an array (handle null/undefined responses)
   const templates = templatesData && Array.isArray(templatesData) ? templatesData : []
 
@@ -263,7 +261,7 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
 
     try {
       const shares = calculateSplitAmounts(total, formData.splitType, formData.person1Ratio, formData.person1Share)
-      
+
       const expenseData = {
         description: formData.description,
         total_amount: total,
@@ -289,14 +287,14 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
   const CategoryIcon = formData.category ? iconMap[CATEGORIES[formData.category]?.icon] : null
 
   return (
-    <div className="h-full overflow-y-auto space-y-4 pb-20 px-3 sm:px-4 scroll-smooth">
+    <div className="min-h-screen overflow-y-auto space-y-4 pt-2 pb-24 px-3 sm:px-4 scroll-smooth max-w-2xl mx-auto">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl text-sm">
             {error}
           </div>
         )}
-        
+
         <div>
           <label htmlFor="description" className="text-sm font-medium mb-2 block">
             Description
@@ -338,7 +336,7 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
             <label htmlFor="category" className="text-sm font-medium mb-2 block">
               Category
             </label>
-            <CategorySelector 
+            <CategorySelector
               selected={formData.category}
               onChange={(category) => setFormData(prev => ({ ...prev, category }))}
               currency={currency}
@@ -352,9 +350,8 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, paidBy: 'person1' }))}
-              className={`card p-3 text-center ${
-                formData.paidBy === 'person1' ? 'border-foreground bg-accent/10' : 'border-border'
-              }`}
+              className={`card p-3 text-center ${formData.paidBy === 'person1' ? 'border-foreground bg-accent/10' : 'border-border'
+                }`}
             >
               <Users className="h-5 w-5 mx-auto mb-1" />
               <p className="text-xs font-medium">{names.person1Name}</p>
@@ -362,9 +359,8 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, paidBy: 'person2' }))}
-              className={`card p-3 text-center ${
-                formData.paidBy === 'person2' ? 'border-foreground bg-accent/10' : 'border-border'
-              }`}
+              className={`card p-3 text-center ${formData.paidBy === 'person2' ? 'border-foreground bg-accent/10' : 'border-border'
+                }`}
             >
               <Users className="h-5 w-5 mx-auto mb-1" />
               <p className="text-xs font-medium">{names.person2Name}</p>
@@ -383,9 +379,8 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
                 key={value}
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, splitType: value }))}
-                className={`card p-3 text-center ${
-                  formData.splitType === value ? 'border-foreground bg-accent/10' : 'border-border'
-                }`}
+                className={`card p-3 text-center ${formData.splitType === value ? 'border-foreground bg-accent/10' : 'border-border'
+                  }`}
               >
                 <Icon className="h-4 w-4 mx-auto mb-1" />
                 <p className="text-xs font-medium">{label}</p>
@@ -395,7 +390,7 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
         </div>
 
         {formData.splitType === 'ratio' && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -405,13 +400,13 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
               <label htmlFor="ratio" className="text-sm font-medium mb-2 block">
                 Split Ratio
               </label>
-              <RatioSelector 
+              <RatioSelector
                 selected={formData.person1Ratio}
                 onChange={(ratio) => setFormData(prev => ({ ...prev, person1Ratio: ratio }))}
                 names={names}
               />
             </div>
-            
+
             <div className="bg-muted p-3 rounded-xl">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">{names.person1Name}</span>
@@ -427,7 +422,7 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
 
         {/* Template Selection */}
         {templates && templates.length > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             className="card p-4 space-y-3"
@@ -441,11 +436,10 @@ const AddExpensePage = ({ setPage, names, currency = 'USD' }) => {
                   key={template.id || template._id}
                   type="button"
                   onClick={() => setSelectedTemplate(template.id || template._id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    selectedTemplate === (template.id || template._id)
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selectedTemplate === (template.id || template._id)
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted hover:bg-accent'
-                  }`}
+                    }`}
                 >
                   {template.name}
                 </button>

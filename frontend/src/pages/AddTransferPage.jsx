@@ -232,30 +232,30 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
   }
 
   return (
-    <div className="min-h-full overflow-y-auto space-y-4 md:space-y-5 pt-2 pb-24 px-3 sm:px-4 scroll-smooth max-w-lg mx-auto">
+    <div className="flex flex-col h-full w-full max-w-lg mx-auto px-4 sm:px-6 py-4 sm:py-6 gap-4 sm:gap-5 md:gap-6 overflow-y-auto">
       {/* Balance Summary */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-2xl md:rounded-xl p-3 md:p-4 shadow-sm"
+        className="bg-card/80 dark:bg-card/90 backdrop-blur-sm border border-border/60 rounded-2xl p-4 sm:p-5 shadow-sm flex-shrink-0"
       >
-        <div className="flex items-center justify-between mb-1.5 md:mb-2">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Wallet className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-xs md:text-sm font-semibold text-muted-foreground truncate">Current Balance</span>
+            <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs sm:text-sm font-semibold text-muted-foreground truncate">Current Balance</span>
           </div>
           {needsSettle && suggestedAmount > 0.01 && (
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleQuickSettle}
-              className="text-xs font-semibold text-primary hover:text-primary/80 dark:text-primary dark:hover:text-primary/80 whitespace-nowrap flex-shrink-0 px-2 py-1 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
+              className="text-xs font-semibold text-primary hover:text-primary/80 whitespace-nowrap flex-shrink-0 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors"
             >
               Settle All
             </motion.button>
           )}
         </div>
-        <p className={`text-base md:text-lg font-bold ${balanceInfo.color} break-words`}>
+        <p className="text-lg sm:text-xl font-bold ${balanceInfo.color} break-words">
           {balanceInfo.message}
         </p>
       </motion.div>
@@ -323,20 +323,18 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
         </div>
       </motion.div>
 
-      {/* Amount Input - Apple Style */}
+      {/* Amount Input */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="space-y-2.5 md:space-y-2"
+        className="flex-shrink-0"
       >
-        <div className="flex items-center justify-between">
-          <label className="text-sm md:text-xs font-medium">Amount</label>
-        </div>
+        <label className="text-sm font-medium mb-3 block">Amount</label>
 
-        <div className="bg-card border border-border rounded-2xl md:rounded-xl p-3 md:p-3 transition-all focus-within:ring-4 focus-within:ring-primary/10 focus-within:border-primary/50">
-          <div className="flex items-center gap-2 md:gap-3">
-            <span className="text-xl md:text-lg font-bold text-foreground">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 transition-all focus-within:ring-4 focus-within:ring-primary/10 focus-within:border-primary/50">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl sm:text-3xl font-bold text-foreground">
               {getCurrencySymbol(currency)}
             </span>
             <input
@@ -346,14 +344,14 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               placeholder="0.00"
               step="0.01"
               min="0.01"
-              className="flex-1 text-xl md:text-lg font-bold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
+              className="flex-1 text-2xl sm:text-3xl font-bold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
               required
             />
           </div>
         </div>
 
         {/* Quick Amounts */}
-        <div className="grid grid-cols-4 gap-1.5 md:gap-2">
+        <div className="grid grid-cols-4 gap-2 mt-3">
           {[100, 250, 500, 1000].map((amount) => (
             <motion.button
               key={amount}
@@ -361,7 +359,7 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, amount: amount.toString() }))}
-              className="py-2 md:py-1.5 px-2 md:px-3 rounded-xl md:rounded-lg bg-muted hover:bg-accent transition-all text-xs md:text-xs font-semibold border border-border active:scale-95"
+              className="py-2.5 sm:py-3 px-3 rounded-xl bg-muted hover:bg-accent transition-all text-sm font-semibold border border-border active:scale-95"
             >
               {getCurrencySymbol(currency)}{amount}
             </motion.button>

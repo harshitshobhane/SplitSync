@@ -51,7 +51,7 @@ const DashboardPage = ({ balance, expenses, transfers, setPage, names, searchQue
   }
 
   return (
-    <div className="h-full flex flex-col gap-3 sm:gap-4 w-full pb-20 px-3 sm:px-4 overflow-y-auto scroll-smooth max-w-4xl mx-auto">
+    <div className="min-h-screen flex flex-col gap-3 sm:gap-4 w-full pt-2 pb-24 px-3 sm:px-4 overflow-y-auto scroll-smooth max-w-4xl mx-auto">
       {/* Balance Card */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
