@@ -169,12 +169,15 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       return
     }
 
+    // Copy amount to clipboard
+    navigator.clipboard.writeText(transferAmount.toString())
+
     let deepLink = ''
     const description = formData.description || `Payment from ${fromName}`
 
     if (paymentMethod === 'upi' && receiverUPI) {
-      // UPI ID deep links
-      const upiParams = `pa=${receiverUPI}&pn=${receiverName}&am=${transferAmount}&cu=INR&tn=${encodeURIComponent(description)}`
+      // UPI ID deep links WITHOUT amount
+      const upiParams = `pa=${receiverUPI}&pn=${receiverName}&cu=INR&tn=${encodeURIComponent(description)}`
 
       switch (app) {
         case 'phonepe':
@@ -193,22 +196,22 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       // Phone number deep links
       switch (app) {
         case 'phonepe':
-          deepLink = `phonepe://pay?pn=${receiverName}&mc=0000&tid=&tr=&tn=${encodeURIComponent(description)}&am=${transferAmount}&mam=null&cu=INR&mn=${receiverPhoneNum}`
+          deepLink = `phonepe://pay?pn=${receiverName}&mc=0000&tn=${encodeURIComponent(description)}&cu=INR&mn=${receiverPhoneNum}`
           break
         case 'paytm':
-          deepLink = `paytmmp://pay?featuretype=sendmoney&recipient=${receiverPhoneNum}&amount=${transferAmount}`
+          deepLink = `paytmmp://pay?featuretype=sendmoney&recipient=${receiverPhoneNum}`
           break
         case 'googlepay':
-          deepLink = `tez://upi/pay?mc=0000&pn=${receiverName}&am=${transferAmount}&cu=INR`
+          deepLink = `tez://upi/pay?pn=${receiverName}&cu=INR`
           break
         default:
-          deepLink = `upi://pay?pn=${receiverName}&am=${transferAmount}&cu=INR`
+          deepLink = `upi://pay?pn=${receiverName}&cu=INR`
       }
     }
 
     if (deepLink) {
       window.location.href = deepLink
-      toast.success('Opening app...', { duration: 2000 })
+      toast.success(`₹${transferAmount} copied - paste in amount field`, { duration: 3000 })
     } else {
       toast.error('Payment details missing')
     }
