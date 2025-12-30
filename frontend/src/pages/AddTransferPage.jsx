@@ -173,10 +173,13 @@ const AddTransferPage = ({ setPage, names, balance, currency = 'USD' }) => {
       // This bypasses the "QR codes via gallery" restriction
       const upiString = `upi://pay?pa=${receiverUPI}&pn=${receiverName}&am=${transferAmount}&cu=INR&mode=02`
 
+      // Paytm is stricter - remove amount to avoid security blocks
+      const paytmString = `upi://pay?pa=${receiverUPI}&pn=${receiverName}&cu=INR&mode=02`
+
       const links = {
         phonepe: upiString,
         googlepay: upiString,
-        paytm: upiString,
+        paytm: paytmString, // No amount for Paytm
         universal: upiString
       }
       return links[app] || links.universal
