@@ -28,6 +28,7 @@ const SignupPage = lazy(() => import('./pages/SignupPage.jsx'))
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.jsx'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'))
 const InvitePage = lazy(() => import('./pages/InvitePage.jsx'))
+const TempGroupPage = lazy(() => import('./pages/TempGroupPage.jsx'))
 
 // API functions
 import { apiService as api } from './lib/api'
@@ -390,6 +391,11 @@ export default function App() {
                   setAuthView(null)
                 }
               }}
+            />
+          )}
+          {authView === 'tempGroup' && (
+            <TempGroupPage
+              onBack={() => setAuthView(null)}
             />
           )}
         </Suspense>
