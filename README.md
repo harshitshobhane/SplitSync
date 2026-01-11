@@ -201,9 +201,6 @@ go build -o splitsync-backend
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
-
-This project is licensed under the MIT License.
 
 ## 🙏 Acknowledgments
 
@@ -216,9 +213,9 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-For support, email support@splitsync.app or create an issue on GitHub.
+For support, email harshitrajpriyashobhane@gmail.com or create an issue on GitHub.
 
 ---
 
-Made with ❤️ for couples who want to split expenses easily and beautifully.
+Made with ❤️ for couples/friends who want to split expenses easily and beautifully.
 
